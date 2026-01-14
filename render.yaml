@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: codezenith-backend
+    runtime: node
+    region: singapore # or ohio/frankfurt
+    plan: free
+    repo: https://github.com/codezenithnp/HR-ms
+    branch: master
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    # Add your secrets here later in the dashboard:
+    # MONGO_URI, JWT_SECRET, SMTP_*
+
+  - type: static
+    name: codezenith-frontend
+    runtime: static
+    region: singapore
+    plan: free
+    repo: https://github.com/codezenithnp/HR-ms
+    branch: master
+    rootDir: frontend/code-zenith
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: codezenith-backend
+          property: url
+        value: /api # This appends /api to the backend URL
