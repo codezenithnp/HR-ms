@@ -6,12 +6,4 @@ dist/
 build/
 coverage/
 .vscode/
-# Project docs/config to ignore
-.API_DOCUMENTATION.md
-.COMPLETION_SUMMARY.md
-.IMMEDIATE_ACTIONS.md
-.PROJECT_COMPLETION_SUMMARY.md
-.README.md
-.render.yaml
-.SETUP_GUIDE.md
-.TEST_CASES.md
+docs/
