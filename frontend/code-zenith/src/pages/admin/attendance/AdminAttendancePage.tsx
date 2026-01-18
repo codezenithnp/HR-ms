@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Calendar, Filter, Download, User, CheckCircle, Clock as ClockIcon, XCircle, AlertCircle } from 'lucide-react';
 import { LoadingSpinner, Badge, StatCard, Pagination } from '../../../components/common';
 import { attendanceService, AttendanceRecord } from '../../../services/attendanceService';
+import { unparse } from 'papaparse';
 
 export const AdminAttendancePage: React.FC = () => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -62,6 +63,29 @@ export const AdminAttendancePage: React.FC = () => {
     }
   };
 
+  const handleExport = () => {
+    const csvData = records.map(record => ({
+      'Employee ID': record.employeeId,
+      'Employee Name': record.employeeName,
+      'Department': record.department,
+      'Date': new Date(record.date).toLocaleDateString(),
+      'Check In': record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Check Out': record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Total Hours': record.totalHours?.toFixed(2) || 'N/A',
+      'Status': record.status,
+      'Shift': record.shiftName || 'N/A'
+    }));
+
+    const csv = unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `attendance-${dateFilter}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'present': return <Badge variant="success">Present</Badge>;
@@ -86,7 +110,7 @@ export const AdminAttendancePage: React.FC = () => {
           <p className="text-muted mb-0">Monitor and manage employee daily attendance</p>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary d-flex align-items-center">
+          <button className="btn btn-outline-secondary d-flex align-items-center" onClick={handleExport}>
             <Download size={18} className="me-2" />
             Export
           </button>

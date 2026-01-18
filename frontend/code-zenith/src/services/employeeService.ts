@@ -132,7 +132,37 @@ export const employeeService = {
    * Get departments
    */
   getDepartments: async (): Promise<string[]> => {
-    // For now, listing departments from a static list or could be unique from employees
-    return ['Engineering', 'HR', 'Marketing', 'Sales', 'Finance', 'Operations'];
+    // Get from settings/departments API
+    const data = await apiClient('/settings/departments');
+    return data.map((d: any) => d.name);
+  },
+
+  /**
+   * Get my profile
+   */
+  getMyProfile: async (): Promise<Employee> => {
+    const emp = await apiClient('/employees/profile/me');
+    return {
+      ...emp,
+      id: emp._id,
+      name: emp.fullName,
+      dateOfBirth: emp.dob,
+    };
+  },
+
+  /**
+   * Update my profile (limited fields)
+   */
+  updateMyProfile: async (data: Partial<Employee>): Promise<Employee> => {
+    const emp = await apiClient('/employees/profile/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return {
+      ...emp,
+      id: emp._id,
+      name: emp.fullName,
+      dateOfBirth: emp.dob,
+    };
   },
 };

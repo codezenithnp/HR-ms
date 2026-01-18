@@ -37,22 +37,19 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [attendanceData, shifts] = await Promise.all([
-        attendanceService.getMyAttendance(),
+      const [todayRec, shifts] = await Promise.all([
+        attendanceService.getTodayAttendance(),
         settingsService.getShifts(),
       ]);
 
-      const today = new Date().toISOString().split('T')[0];
-      const todayRec = attendanceData.find(a => a.date === today);
-      setTodayRecord(todayRec || null);
+      setTodayRecord(todayRec);
 
-      // Find user shift (assuming shiftId is stored on user or employee object)
-      // Since it might be on the full employee object, we might need to fetch it if not in user context
-      // For now, let's assume we can find it mapping by name or just taking the first one if not specified
-      const shift = shifts.find(s => s.id === (user as any).shiftId) || shifts[0];
+      // Find user shift or use first shift as default
+      const shift = shifts.length > 0 ? shifts[0] : null;
       setUserShift(shift);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load attendance data:', error);
+      setMessage({ type: 'error', text: 'Failed to load attendance data: ' + error.message });
     } finally {
       setLoading(false);
     }
@@ -64,10 +61,10 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
     try {
       let record;
       if (type === 'check-in') {
-        record = await attendanceService.checkIn(user?.id, notes);
+        record = await attendanceService.checkIn(undefined, notes);
         setMessage({ type: 'success', text: 'Successfully checked in!' });
       } else {
-        record = await attendanceService.checkOut(user?.id, notes);
+        record = await attendanceService.checkOut(undefined, notes);
         setMessage({ type: 'success', text: 'Successfully checked out!' });
       }
       setTodayRecord(record);
@@ -122,10 +119,10 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
                 </div>
               </div>
 
-              {isCheckedIn && (
+              {isCheckedIn && todayRecord?.checkIn && (
                 <div className="alert alert-info border-0 mb-4 py-2">
                   <Clock size={16} className="me-2" />
-                  Working since {todayRecord?.checkIn}
+                  Working since {new Date(todayRecord.checkIn).toLocaleTimeString()}
                 </div>
               )}
 
@@ -164,7 +161,10 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
                   <div className="alert alert-success border-0 py-3 mb-0">
                     <CheckCircle size={32} className="d-block mx-auto mb-2" />
                     <h5 className="mb-1">All done for today!</h5>
-                    <p className="small mb-0">Checked in: {todayRecord?.checkIn} | Checked out: {todayRecord?.checkOut}</p>
+                    <p className="small mb-0">
+                      Checked in: {todayRecord?.checkIn ? new Date(todayRecord.checkIn).toLocaleTimeString() : '--'} | 
+                      Checked out: {todayRecord?.checkOut ? new Date(todayRecord.checkOut).toLocaleTimeString() : '--'}
+                    </p>
                   </div>
                 )}
               </div>

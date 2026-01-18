@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, BarChart3, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { LoadingSpinner, Badge, StatCard, Pagination } from '../../../components/common';
 import { leaveService, LeaveRequest } from '../../../services/leaveService';
+import { unparse } from 'papaparse';
 
 export const LeaveReportPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,30 @@ export const LeaveReportPage: React.FC = () => {
     totalDays: requests.filter(r => r.status === 'approved').reduce((acc, curr) => acc + curr.days, 0)
   };
 
+  const handleExport = () => {
+    const csvData = requests.map(request => ({
+      'Employee ID': request.employeeId,
+      'Employee Name': request.employeeName,
+      'Department': request.department || 'N/A',
+      'Leave Type': request.leaveType,
+      'From Date': new Date(request.fromDate).toLocaleDateString(),
+      'To Date': new Date(request.toDate).toLocaleDateString(),
+      'Days': request.days,
+      'Status': request.status,
+      'Applied On': new Date(request.appliedDate).toLocaleDateString(),
+      'Reason': request.reason || ''
+    }));
+
+    const csv = unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leave-report-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container-fluid p-0">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -75,9 +100,9 @@ export const LeaveReportPage: React.FC = () => {
           <h1 className="h3 mb-1">Leave Utilization Report</h1>
           <p className="text-muted mb-0">Track employee absence and leave balances across departments</p>
         </div>
-        <button className="btn btn-outline-primary d-flex align-items-center" onClick={() => alert('Exporting...')}>
+        <button className="btn btn-outline-primary d-flex align-items-center" onClick={handleExport}>
           <Download size={18} className="me-2" />
-          Export XLSX
+          Export CSV
         </button>
       </div>
 

@@ -55,6 +55,11 @@ const employeeSchema = new mongoose.Schema(
             type: Date,
             required: [true, 'Please add a date of birth'],
         },
+        shift: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Shift',
+            required: false,
+        },
         user: {
             type: mongoose.Schema.ObjectId,
             ref: 'User',

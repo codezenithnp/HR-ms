@@ -84,4 +84,30 @@ export const attendanceService = {
   getTodayStats: async () => {
     return await apiClient('/attendance/today-stats');
   },
+
+  /**
+   * Get today's attendance for current user
+   */
+  getTodayAttendance: async (): Promise<AttendanceRecord | null> => {
+    const data = await apiClient('/attendance/today');
+    if (!data) return null;
+    return {
+      ...data,
+      id: data._id,
+    };
+  },
+
+  /**
+   * Update attendance record (Admin correction)
+   */
+  updateAttendance: async (id: string, data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+    const response = await apiClient(`/attendance/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return {
+      ...response,
+      id: response._id,
+    };
+  },
 };

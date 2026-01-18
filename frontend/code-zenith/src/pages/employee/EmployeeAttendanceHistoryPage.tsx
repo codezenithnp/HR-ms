@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { attendanceService } from '../../services';
 import { AttendanceRecord } from '../../services/attendanceService';
 import { LoadingSpinner, Badge, Pagination } from '../../components/common';
+import { unparse } from 'papaparse';
 
 export const EmployeeAttendanceHistoryPage: React.FC = () => {
   const { user } = useAuth();
@@ -60,6 +61,26 @@ export const EmployeeAttendanceHistoryPage: React.FC = () => {
     setPage(1);
   };
 
+  const handleExport = () => {
+    const csvData = attendance.map(record => ({
+      'Date': new Date(record.date).toLocaleDateString(),
+      'Check In': record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Check Out': record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Total Hours': record.totalHours?.toFixed(2) || 'N/A',
+      'Status': record.status,
+      'Shift': record.shiftName || 'N/A'
+    }));
+
+    const csv = unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `my-attendance-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const stats = {
     present: attendance.filter(a => a.status === 'present').length,
     late: attendance.filter(a => a.status === 'late').length,
@@ -74,7 +95,7 @@ export const EmployeeAttendanceHistoryPage: React.FC = () => {
           <h1 className="h3 mb-1">Attendance History</h1>
           <p className="text-muted mb-0">Track your daily presence and timing</p>
         </div>
-        <button className="btn btn-outline-secondary d-flex align-items-center">
+        <button className="btn btn-outline-secondary d-flex align-items-center" onClick={handleExport}>
           <Download size={18} className="me-2" />
           Export CSV
         </button>

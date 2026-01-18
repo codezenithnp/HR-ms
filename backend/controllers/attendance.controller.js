@@ -1,5 +1,7 @@
 import Attendance from '../models/Attendance.js';
 import Employee from '../models/Employee.js';
+import Shift from '../models/Shift.js';
+import { createAuditLog, getIpAddress } from '../utils/auditLog.js';
 
 // @desc    Check-in
 // @route   POST /api/attendance/check-in
@@ -31,11 +33,27 @@ export const checkIn = async (req, res) => {
         throw new Error('Already checked in for today');
     }
 
+    const checkInTime = new Date();
+    
+    // Calculate if late based on shift
+    let status = 'present';
+    const shift = await Shift.findById(employeeRecord.shift);
+    if (shift) {
+        const [shiftHour, shiftMin] = shift.startTime.split(':').map(Number);
+        const shiftStart = new Date(today);
+        shiftStart.setHours(shiftHour, shiftMin, 0, 0);
+        const lateThreshold = new Date(shiftStart.getTime() + (shift.gracePeriod || 0) * 60000);
+        
+        if (checkInTime > lateThreshold) {
+            status = 'late';
+        }
+    }
+
     attendance = await Attendance.create({
         employee: employeeRecord._id,
         date: today,
-        checkIn: new Date(),
-        status: 'present',
+        checkIn: checkInTime,
+        status,
     });
 
     res.status(201).json(attendance);
@@ -152,4 +170,69 @@ export const getTodayStats = async (req, res) => {
         leave,
         absent: absent > 0 ? absent : 0,
     });
+};
+
+// @desc    Get today's attendance for specific employee
+// @route   GET /api/attendance/today
+// @access  Private
+export const getTodayAttendance = async (req, res) => {
+    const employeeRecord = await Employee.findOne({ email: req.user.email });
+
+    if (!employeeRecord) {
+        res.status(404);
+        throw new Error('Employee record not found');
+    }
+
+    const today = new Date().setHours(0, 0, 0, 0);
+    const attendance = await Attendance.findOne({
+        employee: employeeRecord._id,
+        date: today,
+    });
+
+    res.json(attendance || null);
+};
+
+// @desc    Update attendance record (Admin correction)
+// @route   PUT /api/attendance/:id
+// @access  Private (Admin/HR)
+export const updateAttendance = async (req, res) => {
+    const { checkIn, checkOut, status, notes } = req.body;
+    
+    const attendance = await Attendance.findById(req.params.id).populate('employee', 'fullName employeeId');
+
+    if (!attendance) {
+        res.status(404);
+        throw new Error('Attendance record not found');
+    }
+
+    const oldData = {
+        checkIn: attendance.checkIn,
+        checkOut: attendance.checkOut,
+        status: attendance.status,
+    };
+
+    if (checkIn) attendance.checkIn = new Date(checkIn);
+    if (checkOut) attendance.checkOut = new Date(checkOut);
+    if (status) attendance.status = status;
+    if (notes) attendance.notes = notes;
+
+    await attendance.save();
+
+    // Create audit log
+    await createAuditLog({
+        user: req.user,
+        action: 'UPDATE',
+        entity: 'Attendance',
+        entityId: attendance._id,
+        details: {
+            employee: attendance.employee.fullName,
+            date: attendance.date,
+            oldData,
+            newData: { checkIn: attendance.checkIn, checkOut: attendance.checkOut, status: attendance.status },
+            reason: notes,
+        },
+        ipAddress: getIpAddress(req),
+    });
+
+    res.json(attendance);
 };

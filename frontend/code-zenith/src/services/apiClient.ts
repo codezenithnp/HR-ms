@@ -27,10 +27,19 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
         headers,
     });
 
-    const data = await response.json();
+    // Handle 401 - Unauthorized
+    if (response.status === 401) {
+        // Clear token and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+    }
+
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        throw new Error(data.message || `Error: ${response.statusText}`);
     }
 
     return data;

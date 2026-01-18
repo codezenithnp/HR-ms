@@ -32,19 +32,28 @@ export const EmployeeDashboardPage: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      const [attendanceData, leaveData, holidayData, balanceData] = await Promise.all([
+      setLoading(true);
+      const [attendanceData, leaveData, holidayData] = await Promise.all([
         attendanceService.getMyAttendance(),
-        leaveService.getAll({ employeeId: user?.id }), // Filters work on employeeId
+        leaveService.getAll().catch(() => []), // Get own leaves, backend may filter
         settingsService.getHolidays(),
-        leaveService.getLeaveBalance(user?.employeeId || ''),
       ]);
 
+      // Filter to get only my leaves
+      const myLeaves = leaveData;
+
       setAttendance(attendanceData.slice(0, 5));
-      setLeaves(leaveData.slice(0, 5));
+      setLeaves(myLeaves.slice(0, 5));
       setHolidays(holidayData.filter(h => new Date(h.date) >= new Date()).slice(0, 3));
-      setLeaveBalance(balanceData);
-    } catch (error) {
+      
+      // Calculate leave balance from leave types
+      const types = await leaveService.getLeaveTypes().catch(() => []);
+      const totalAllowed = types.reduce((sum, t) => sum + t.daysAllowed, 0);
+      const totalUsed = myLeaves.filter(l => l.status === 'approved').reduce((sum, l) => sum + l.days, 0);
+      setLeaveBalance({ totalRemaining: totalAllowed - totalUsed, totalAllowed, totalUsed });
+    } catch (error: any) {
       console.error('Failed to load dashboard data:', error);
+      alert('Failed to load dashboard data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -54,7 +63,11 @@ export const EmployeeDashboardPage: React.FC = () => {
     return <LoadingSpinner text="Loading dashboard..." />;
   }
 
-  const todayStatus = attendance.find(a => a.date === new Date().toISOString().split('T')[0]);
+  const todayStatus = attendance.find(a => {
+    const recordDate = new Date(a.date).toDateString();
+    const today = new Date().toDateString();
+    return recordDate === today;
+  });
 
   return (
     <div className="container-fluid p-0">
@@ -78,7 +91,7 @@ export const EmployeeDashboardPage: React.FC = () => {
             icon={CheckCircle}
             iconBgColor={todayStatus ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'}
             iconColor={todayStatus ? 'text-success' : 'text-warning'}
-            subtitle={todayStatus?.checkIn ? `Checked in at ${todayStatus.checkIn}` : 'No entry for today'}
+            subtitle={todayStatus?.checkIn ? `Checked in at ${new Date(todayStatus.checkIn).toLocaleTimeString()}` : 'No entry for today'}
           />
         </div>
         <div className="col-md-6 col-lg-3">
@@ -137,12 +150,19 @@ export const EmployeeDashboardPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {attendance.length > 0 ? (
-                      attendance.map((record) => (
+                      attendance.map((record) => {
+                        const checkInTime = record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : '--:--';
+                        const checkOutTime = record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : '--:--';
+                        const hours = record.checkIn && record.checkOut 
+                          ? ((new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 3600000).toFixed(1)
+                          : '--';
+                        
+                        return (
                         <tr key={record.id}>
                           <td>{new Date(record.date).toLocaleDateString()}</td>
-                          <td>{record.checkIn || '--:--'}</td>
-                          <td>{record.checkOut || '--:--'}</td>
-                          <td>{record.totalHours?.toFixed(1) || '--'}</td>
+                          <td>{checkInTime}</td>
+                          <td>{checkOutTime}</td>
+                          <td>{hours}</td>
                           <td>
                             <Badge
                               variant={
@@ -154,7 +174,8 @@ export const EmployeeDashboardPage: React.FC = () => {
                             </Badge>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={5} className="text-center py-4 text-muted">No attendance records found</td>

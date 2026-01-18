@@ -2,6 +2,7 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import sendEmail from '../utils/sendEmail.js';
 import crypto from 'crypto';
+import { createAuditLog, getIpAddress } from '../utils/auditLog.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -175,10 +176,66 @@ export const deleteEmployee = async (req, res) => {
     const employee = await Employee.findById(req.params.id);
 
     if (employee) {
+        // Create audit log before deletion
+        await createAuditLog({
+            user: req.user,
+            action: 'DELETE',
+            entity: 'Employee',
+            entityId: employee._id,
+            details: {
+                employeeId: employee.employeeId,
+                fullName: employee.fullName,
+                email: employee.email,
+                department: employee.department,
+            },
+            ipAddress: getIpAddress(req),
+        });
+
         await employee.deleteOne();
         res.json({ message: 'Employee removed' });
     } else {
         res.status(404);
         throw new Error('Employee not found');
     }
+};
+
+// @desc    Get employee profile (for employees to view their own profile)
+// @route   GET /api/employees/profile/me
+// @access  Private
+export const getMyProfile = async (req, res) => {
+    const employee = await Employee.findOne({ email: req.user.email });
+
+    if (!employee) {
+        res.status(404);
+        throw new Error('Employee profile not found');
+    }
+
+    res.json(employee);
+};
+
+// @desc    Update employee profile (limited fields for self-update)
+// @route   PUT /api/employees/profile/me
+// @access  Private
+export const updateMyProfile = async (req, res) => {
+    const employee = await Employee.findOne({ email: req.user.email });
+
+    if (!employee) {
+        res.status(404);
+        throw new Error('Employee profile not found');
+    }
+
+    // Only allow updating certain fields
+    const allowedUpdates = ['phone', 'address'];
+    const updates = {};
+    
+    allowedUpdates.forEach(field => {
+        if (req.body[field] !== undefined) {
+            updates[field] = req.body[field];
+        }
+    });
+
+    Object.assign(employee, updates);
+    const updatedEmployee = await employee.save();
+
+    res.json(updatedEmployee);
 };

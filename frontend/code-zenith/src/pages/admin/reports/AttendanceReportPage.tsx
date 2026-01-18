@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Search, FileText, PieChart, TrendingUp, Users } from 'lucide-react';
 import { LoadingSpinner, Badge, StatCard, Pagination } from '../../../components/common';
 import { attendanceService, AttendanceRecord } from '../../../services/attendanceService';
+import { unparse } from 'papaparse';
 
 export const AttendanceReportPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -50,8 +51,26 @@ export const AttendanceReportPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    alert('Exporting report as CSV...');
-    // Real export logic would go here
+    const csvData = records.map(record => ({
+      'Employee ID': record.employeeId,
+      'Employee Name': record.employeeName,
+      'Department': record.department,
+      'Date': new Date(record.date).toLocaleDateString(),
+      'Check In': record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Check Out': record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      'Total Hours': record.totalHours?.toFixed(2) || 'N/A',
+      'Status': record.status,
+      'Shift': record.shiftName || 'N/A'
+    }));
+
+    const csv = unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `attendance-report-${filters.startDate}-to-${filters.endDate}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const departments = ['Engineering', 'HR', 'Marketing', 'Sales', 'Finance', 'Operations'];
