@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
+import Employee from '../models/Employee.js';
 import sendEmail from '../utils/sendEmail.js';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -86,11 +87,14 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+        const employee = await Employee.findOne({ email: user.email });
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
+            employeeId: employee?.employeeId,
+            department: employee?.department,
             token: generateToken(user._id),
         });
     } else {
@@ -106,12 +110,16 @@ export const getMe = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+        const employee = await Employee.findOne({ email: user.email });
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
             isEmailVerified: user.isEmailVerified,
+            employeeId: employee?.employeeId,
+            department: employee?.department,
+            position: employee?.position,
         });
     } else {
         res.status(404);
@@ -276,11 +284,15 @@ export const googleLogin = async (req, res) => {
             }
         }
 
+        const employee = await Employee.findOne({ email: user.email });
+
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
+            employeeId: employee?.employeeId,
+            department: employee?.department,
             token: generateToken(user._id),
         });
 
@@ -310,6 +322,57 @@ export const updatePassword = async (req, res) => {
         res.status(401);
         throw new Error('Invalid current password');
     }
+};
+
+// @desc    Update current user profile (admin/hr/manager)
+// @route   PUT /api/auth/me
+// @access  Private
+export const updateMe = async (req, res) => {
+    if (req.user.role === 'employee') {
+        res.status(403);
+        throw new Error('Employees are not allowed to update account details here');
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const { name, email } = req.body;
+    const previousEmail = user.email;
+
+    if (email && email !== user.email) {
+        const existing = await User.findOne({ email });
+        if (existing) {
+            res.status(400);
+            throw new Error('Email already in use');
+        }
+        user.email = email;
+    }
+
+    if (name) {
+        user.name = name;
+    }
+
+    const updatedUser = await user.save();
+
+    const employee = await Employee.findOne({ email: previousEmail });
+    if (employee) {
+        if (email) employee.email = updatedUser.email;
+        if (name) employee.fullName = updatedUser.name;
+        await employee.save();
+    }
+
+    res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        employeeId: employee?.employeeId,
+        department: employee?.department,
+    });
 };
 
 // Generate JWT

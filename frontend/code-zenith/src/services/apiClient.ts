@@ -27,16 +27,21 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
         headers,
     });
 
+    // Parse response body once so we can reuse the message when needed
+    const data = await response.json().catch(() => ({}));
+
     // Handle 401 - Unauthorized
     if (response.status === 401) {
-        // Clear token and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        throw new Error('Session expired. Please login again.');
-    }
+        // Only treat as an expired session when a token exists; otherwise surface the API error (e.g., bad login)
+        if (token) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+            throw new Error(data.message || 'Session expired. Please login again.');
+        }
 
-    const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Unauthorized');
+    }
 
     if (!response.ok) {
         throw new Error(data.message || `Error: ${response.statusText}`);

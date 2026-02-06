@@ -20,6 +20,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +71,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('token');
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
     if (!user) return false;
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
@@ -83,6 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     isAuthenticated: !!user,
     hasRole,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

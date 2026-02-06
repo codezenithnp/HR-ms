@@ -10,31 +10,64 @@ import {
   Edit,
   Info
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { employeeService } from '../../services';
 import { Employee } from '../../services/employeeService';
 import { LoadingSpinner, Badge } from '../../components/common';
 
 export const EmployeeProfilePage: React.FC = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [activeTab, setActiveTab] = useState<'personal' | 'job' | 'account'>('personal');
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    phone: '',
+    address: '',
+  });
 
   useEffect(() => {
-    if (user) {
-      loadEmployeeDetails();
-    }
-  }, [user]);
+    loadEmployeeDetails();
+  }, []);
 
   const loadEmployeeDetails = async () => {
     try {
-      const data = await employeeService.getEmployeeById(user?.id || '');
+      const data = await employeeService.getMyProfile();
       setEmployee(data);
+      setFormData({
+        phone: data.phone || '',
+        address: data.address || '',
+      });
     } catch (error) {
       console.error('Failed to load employee details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!employee) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const updated = await employeeService.updateMyProfile({
+        phone: formData.phone,
+        address: formData.address,
+      });
+      setEmployee(updated);
+      setSuccess('Profile updated successfully.');
+      setIsEditing(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -84,7 +117,7 @@ export const EmployeeProfilePage: React.FC = () => {
                   </div>
                   <div>
                     <small className="text-muted d-block">Phone Number</small>
-                    <span className="fw-medium small">{employee.phone}</span>
+                    <span className="fw-medium small">{employee.phone || 'Not provided'}</span>
                   </div>
                 </div>
               </div>
@@ -112,6 +145,14 @@ export const EmployeeProfilePage: React.FC = () => {
                     Job Information
                   </button>
                 </li>
+                <li className="nav-item">
+                  <button
+                    className={`nav-link py-3 border-0 ${activeTab === 'account' ? 'active fw-bold text-primary border-bottom border-primary border-3' : 'text-muted'}`}
+                    onClick={() => setActiveTab('account')}
+                  >
+                    Account
+                  </button>
+                </li>
               </ul>
             </div>
 
@@ -120,10 +161,24 @@ export const EmployeeProfilePage: React.FC = () => {
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-4">
                     <h5 className="mb-0">Personal Information</h5>
-                    <button className="btn btn-sm btn-outline-primary" disabled>
-                      <Edit size={14} className="me-1" /> Edit Profile
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => {
+                        setIsEditing(prev => !prev);
+                        setError(null);
+                        setSuccess(null);
+                      }}
+                    >
+                      <Edit size={14} className="me-1" /> {isEditing ? 'Cancel' : 'Edit Profile'}
                     </button>
                   </div>
+
+                  {error && (
+                    <div className="alert alert-danger small">{error}</div>
+                  )}
+                  {success && (
+                    <div className="alert alert-success small">{success}</div>
+                  )}
 
                   <div className="row g-4">
                     <div className="col-md-6 text-sm">
@@ -137,14 +192,55 @@ export const EmployeeProfilePage: React.FC = () => {
                         {employee.dateOfBirth || employee.dob || 'Not provided'}
                       </p>
                     </div>
+                    <div className="col-md-6 text-sm">
+                      <label className="text-muted d-block mb-1">Phone Number</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="phone"
+                          className="form-control"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          disabled={saving}
+                        />
+                      ) : (
+                        <p className="fw-medium mb-0">{employee.phone || 'Not provided'}</p>
+                      )}
+                    </div>
                     <div className="col-12 text-sm">
                       <label className="text-muted d-block mb-1">Residential Address</label>
-                      <p className="fw-medium mb-0">
-                        <MapPin size={14} className="me-2 text-muted" />
-                        {employee.address}
-                      </p>
+                      {isEditing ? (
+                        <textarea
+                          name="address"
+                          className="form-control"
+                          rows={3}
+                          value={formData.address}
+                          onChange={handleChange}
+                          disabled={saving}
+                        />
+                      ) : (
+                        <p className="fw-medium mb-0">
+                          <MapPin size={14} className="me-2 text-muted" />
+                          {employee.address || 'Not provided'}
+                        </p>
+                      )}
                     </div>
                   </div>
+
+                  {isEditing && (
+                    <div className="d-flex justify-content-end mt-4">
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSave}
+                        disabled={saving}
+                      >
+                        {saving && (
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        )}
+                        Save Changes
+                      </button>
+                    </div>
+                  )}
 
                   <div className="alert alert-secondary mt-5 small d-flex align-items-start border-0 bg-light">
                     <Info size={16} className="me-2 mt-1 text-primary" />
@@ -191,6 +287,34 @@ export const EmployeeProfilePage: React.FC = () => {
                     <div className="col-md-6">
                       <label className="text-muted d-block mb-1">Reporting Role</label>
                       <p className="fw-medium mb-0 text-capitalize">{employee.role}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'account' && (
+                <div>
+                  <h5 className="mb-4">Account Overview</h5>
+                  <div className="row g-4 text-sm">
+                    <div className="col-md-6">
+                      <label className="text-muted d-block mb-1">Account Email</label>
+                      <p className="fw-medium mb-0">
+                        <Mail size={14} className="me-2 text-muted" />
+                        {employee.email}
+                      </p>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="text-muted d-block mb-1">Role</label>
+                      <p className="fw-medium mb-0 text-capitalize">
+                        <Shield size={14} className="me-2 text-muted" />
+                        {employee.role}
+                      </p>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="text-muted d-block mb-1">Status</label>
+                      <Badge variant={employee.status === 'active' ? 'success' : 'warning'}>
+                        {employee.status.toUpperCase()}
+                      </Badge>
                     </div>
                   </div>
                 </div>

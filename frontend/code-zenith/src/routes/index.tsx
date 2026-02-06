@@ -19,6 +19,7 @@ import { AdminRegisterPage } from '../pages/auth/AdminRegisterPage';
 
 // Admin Pages
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
+import { AdminProfilePage } from '../pages/admin/AdminProfilePage';
 import { EmployeeListPage } from '../pages/admin/employees/EmployeeListPage';
 import { EmployeeCreatePage } from '../pages/admin/employees/EmployeeCreatePage';
 import { EmployeeDetailPage } from '../pages/admin/employees/EmployeeDetailPage';
@@ -97,6 +98,8 @@ export const AppRoutes: React.FC = () => {
 
         {/* Settings */}
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="profile" element={<AdminProfilePage />} />
+        <Route path="change-password" element={<ChangePasswordPage />} />
       </Route>
 
       {/* Employee Routes */}

@@ -124,12 +124,12 @@ export const AdminLayout: React.FC = () => {
                   </li>
                   <li><hr className="dropdown-divider" /></li>
                   <li>
-                    <NavLink to="/employee/profile" className="dropdown-item">
+                    <NavLink to="/admin/profile" className="dropdown-item">
                       Profile
                     </NavLink>
                   </li>
                   <li>
-                    <NavLink to="/employee/change-password" className="dropdown-item">
+                    <NavLink to="/admin/change-password" className="dropdown-item">
                       Change Password
                     </NavLink>
                   </li>

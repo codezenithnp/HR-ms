@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -9,40 +9,51 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { leaveService } from '../../services';
-import { LeaveRequest, LeaveType } from '../../services/leaveService';
+import { leaveService, employeeService } from '../../services';
+import { LeaveRequest, LeaveType, LeaveBalance } from '../../services/leaveService';
 import { LoadingSpinner, Badge } from '../../components/common';
 
 export const EmployeeLeavesPage: React.FC = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
-  const [balance, setBalance] = useState<any>(null);
+  const [balance, setBalance] = useState<LeaveBalance[]>([]);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      loadLeaveData();
-    }
-  }, [user]);
+    loadLeaveData();
+  }, []);
 
   const loadLeaveData = async () => {
     setLoading(true);
+    setError(null);
     try {
+      const profile = await employeeService.getMyProfile();
       const [leaveData, typeData, balanceData] = await Promise.all([
-        leaveService.getAll({ employeeId: user?.id }),
+        leaveService.getMyLeaves(),
         leaveService.getLeaveTypes(),
-        leaveService.getLeaveBalance(user?.employeeId || ''),
+        leaveService.getLeaveBalance(profile.id),
       ]);
 
       setLeaves(leaveData);
       setLeaveTypes(typeData);
-      setBalance(balanceData);
+      setBalance(Array.isArray(balanceData) ? balanceData : (balanceData?.balances || []));
     } catch (error) {
       console.error('Failed to load leave data:', error);
+      setError('Failed to load leave data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async (leaveId: string) => {
+    if (!confirm('Cancel this leave request?')) return;
+    try {
+      await leaveService.delete(leaveId);
+      await loadLeaveData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel leave request');
     }
   };
 
@@ -54,6 +65,21 @@ export const EmployeeLeavesPage: React.FC = () => {
       default: return null;
     }
   };
+
+  const formatDate = (value?: string) => {
+    if (!value) return '--';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '--' : date.toLocaleDateString();
+  };
+
+  const filteredLeaves = useMemo(() => {
+    if (!search.trim()) return leaves;
+    const query = search.toLowerCase();
+    return leaves.filter(leave =>
+      (leave.leaveType || '').toLowerCase().includes(query) ||
+      (leave.reason || '').toLowerCase().includes(query)
+    );
+  }, [leaves, search]);
 
   if (loading) {
     return <LoadingSpinner text="Loading leave data..." />;
@@ -73,9 +99,20 @@ export const EmployeeLeavesPage: React.FC = () => {
       </div>
 
       {/* Leave Balance Cards */}
+      {error && (
+        <div className="alert alert-danger d-flex align-items-center">
+          <Info size={18} className="me-2" />
+          {error}
+        </div>
+      )}
+
       <div className="row g-4 mb-4">
         {leaveTypes.map((type) => {
-          const typeBalance = balance?.balances?.find((b: any) => b.leaveType === type.name);
+          const typeBalance = balance.find((b: any) => b.leaveType === type.name);
+          const total = type.daysAllowed || 0;
+          const used = typeBalance?.used ?? 0;
+          const remaining = typeBalance?.remaining ?? type.daysAllowed;
+          const percentage = total ? Math.round((used / total) * 100) : 0;
           return (
             <div key={type.id} className="col-md-6 col-lg-3">
               <div className="card h-100 border-0 shadow-sm overflow-hidden">
@@ -90,21 +127,21 @@ export const EmployeeLeavesPage: React.FC = () => {
                     <Badge variant="light" className="text-muted">Annual: {type.daysAllowed}</Badge>
                   </div>
                   <h6 className="text-muted mb-1">{type.name}</h6>
-                  <h3 className="mb-0 fw-bold">{typeBalance?.remaining ?? type.daysAllowed} <small className="h6 text-muted fw-normal">days left</small></h3>
+                  <h3 className="mb-0 fw-bold">{remaining} <small className="h6 text-muted fw-normal">days left</small></h3>
                   <div className="mt-3 small">
                     <div className="progress" style={{ height: '6px' }}>
                       <div
                         className="progress-bar"
                         role="progressbar"
                         style={{
-                          width: `${((typeBalance?.used ?? 0) / type.daysAllowed) * 100}%`,
+                          width: `${percentage}%`,
                           backgroundColor: type.color
                         }}
                       ></div>
                     </div>
                     <div className="d-flex justify-content-between mt-1 text-muted">
-                      <span>Used: {typeBalance?.used ?? 0}</span>
-                      <span>{Math.round(((typeBalance?.used ?? 0) / type.daysAllowed) * 100)}%</span>
+                      <span>Used: {used}</span>
+                      <span>{percentage}%</span>
                     </div>
                   </div>
                 </div>
@@ -123,7 +160,13 @@ export const EmployeeLeavesPage: React.FC = () => {
                 <span className="input-group-text bg-transparent border-end-0">
                   <Search size={16} className="text-muted" />
                 </span>
-                <input type="text" className="form-control border-start-0" placeholder="Search requests..." />
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Search requests..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
             <div className="card-body p-0">
@@ -140,18 +183,18 @@ export const EmployeeLeavesPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaves.length > 0 ? (
-                      leaves.map((leave) => (
+                    {filteredLeaves.length > 0 ? (
+                      filteredLeaves.map((leave) => (
                         <tr key={leave.id}>
                           <td className="px-4">
-                            <div className="fw-medium">{leave.leaveType}</div>
+                            <div className="fw-medium">{leave.leaveType || 'Leave'}</div>
                             <small className="text-muted text-truncate d-inline-block" style={{ maxWidth: '200px' }}>
-                              {leave.reason}
+                              {leave.reason || 'No reason provided'}
                             </small>
                           </td>
                           <td>
                             <div className="small">
-                              {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                              {formatDate(leave.fromDate)} - {formatDate(leave.toDate)}
                             </div>
                           </td>
                           <td>{leave.days}</td>
@@ -167,12 +210,25 @@ export const EmployeeLeavesPage: React.FC = () => {
                             </div>
                           </td>
                           <td className="text-muted small">
-                            {new Date(leave.appliedDate).toLocaleDateString()}
+                            {formatDate(leave.appliedDate)}
                           </td>
                           <td className="text-end px-4">
-                            <button className="btn btn-sm btn-light">
-                              <Info size={16} />
-                            </button>
+                            <div className="d-inline-flex gap-2">
+                              <button
+                                className="btn btn-sm btn-light"
+                                title={leave.reason}
+                              >
+                                <Info size={16} />
+                              </button>
+                              {leave.status === 'pending' && (
+                                <button
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => handleCancel(leave.id)}
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))

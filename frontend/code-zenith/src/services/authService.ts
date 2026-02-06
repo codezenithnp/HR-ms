@@ -15,6 +15,8 @@ export interface LoginResponse {
   email: string;
   role: UserRole;
   token: string;
+  employeeId?: string;
+  department?: string;
 }
 
 export const authService = {
@@ -41,8 +43,8 @@ export const authService = {
       email: data.email,
       role: data.role,
       // Default placeholder fields if not returned by login
-      employeeId: '',
-      department: '',
+      employeeId: data.employeeId || '',
+      department: data.department || '',
     };
 
     return { user, token: data.token };
@@ -62,6 +64,24 @@ export const authService = {
    */
   getCurrentUser: async (): Promise<User> => {
     const data = await apiClient('/auth/me');
+    return {
+      id: data._id,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      employeeId: data.employeeId || '',
+      department: data.department || '',
+    };
+  },
+
+  /**
+   * Update current user profile (admin/hr/manager)
+   */
+  updateProfile: async (payload: Pick<User, 'name' | 'email'>): Promise<User> => {
+    const data = await apiClient('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
     return {
       id: data._id,
       name: data.name,

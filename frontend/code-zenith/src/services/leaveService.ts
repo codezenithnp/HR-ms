@@ -26,6 +26,14 @@ export interface LeaveRequest {
   approvedDate?: string;
 }
 
+export interface LeaveBalance {
+  leaveType: string;
+  total: number;
+  used: number;
+  remaining: number;
+  color: string;
+}
+
 export const leaveService = {
   /**
    * Get all leave requests
@@ -45,6 +53,19 @@ export const leaveService = {
       employeeId: record.employee?.employeeId,
       employeeName: record.employee?.fullName,
       department: record.employee?.department,
+      appliedDate: record.appliedDate || record.createdAt,
+    }));
+  },
+
+  /**
+   * Get current user's leave requests
+   */
+  getMyLeaves: async (): Promise<LeaveRequest[]> => {
+    const data = await apiClient('/leaves/me');
+    return data.map((record: any) => ({
+      ...record,
+      id: record._id,
+      appliedDate: record.appliedDate || record.createdAt,
     }));
   },
 

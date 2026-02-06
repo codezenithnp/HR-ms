@@ -16,9 +16,50 @@ export const requestLeave = async (req, res) => {
         throw new Error('Employee record not found');
     }
 
-    // Check for overlapping leave requests
+    // Validate dates
     const from = new Date(fromDate);
     const to = new Date(toDate);
+
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+        res.status(400);
+        throw new Error('Invalid leave dates');
+    }
+
+    if (from > to) {
+        res.status(400);
+        throw new Error('From date must be before or same as To date');
+    }
+
+    // Resolve leave type and balance
+    const leaveTypeRecord = await LeaveType.findOne({ name: leaveType });
+    if (!leaveTypeRecord) {
+        res.status(400);
+        throw new Error('Invalid leave type');
+    }
+
+    const calculatedDays = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+    const requestedDays = Number(days) || calculatedDays;
+
+    if (requestedDays <= 0) {
+        res.status(400);
+        throw new Error('Invalid number of leave days');
+    }
+
+    const approvedLeaves = await LeaveRequest.find({
+        employee: employeeRecord._id,
+        leaveType: leaveTypeRecord.name,
+        status: 'approved',
+    });
+
+    const used = approvedLeaves.reduce((sum, l) => sum + l.days, 0);
+    const remaining = leaveTypeRecord.daysAllowed - used;
+
+    if (requestedDays > remaining) {
+        res.status(400);
+        throw new Error('Insufficient leave balance for this leave type');
+    }
+
+    // Check for overlapping leave requests
     
     const overlapping = await LeaveRequest.findOne({
         employee: employeeRecord._id,
@@ -35,10 +76,10 @@ export const requestLeave = async (req, res) => {
 
     const leave = await LeaveRequest.create({
         employee: employeeRecord._id,
-        leaveType,
-        fromDate,
-        toDate,
-        days,
+        leaveType: leaveTypeRecord.name,
+        fromDate: from,
+        toDate: to,
+        days: requestedDays,
         reason,
     });
 
@@ -99,12 +140,52 @@ export const updateLeaveStatus = async (req, res) => {
         throw new Error('You cannot approve/reject your own leave request');
     }
 
+    if (!status || !['approved', 'rejected'].includes(status)) {
+        res.status(400);
+        throw new Error('Invalid leave status');
+    }
+
+    if (leave.status !== 'pending') {
+        res.status(400);
+        throw new Error('Only pending leave requests can be updated');
+    }
+
+    if (status === 'approved') {
+        const leaveTypeRecord = await LeaveType.findOne({ name: leave.leaveType });
+        if (!leaveTypeRecord) {
+            res.status(400);
+            throw new Error('Invalid leave type');
+        }
+
+        const approvedLeaves = await LeaveRequest.find({
+            employee: leave.employee._id,
+            leaveType: leaveTypeRecord.name,
+            status: 'approved',
+        });
+
+        const used = approvedLeaves.reduce((sum, l) => sum + l.days, 0);
+        const remaining = leaveTypeRecord.daysAllowed - used;
+
+        if (leave.days > remaining) {
+            res.status(400);
+            throw new Error('Insufficient leave balance for approval');
+        }
+    }
+
     const oldStatus = leave.status;
-    leave.status = status || leave.status;
+    leave.status = status;
     leave.approvedBy = req.user.name;
     leave.approvedDate = new Date();
 
     const updatedLeave = await leave.save();
+
+    if (status === 'approved') {
+        const today = new Date();
+        const isActiveLeave = today >= new Date(leave.fromDate) && today <= new Date(leave.toDate);
+        if (isActiveLeave) {
+            await Employee.findByIdAndUpdate(leave.employee._id, { status: 'on-leave' });
+        }
+    }
 
     // Create audit log
     await createAuditLog({
