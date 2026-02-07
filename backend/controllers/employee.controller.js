@@ -149,7 +149,7 @@ export const createEmployee = async (req, res) => {
 export const updateEmployee = async (req, res) => {
     const employee = await Employee.findById(req.params.id);
 
-    if (employee) {
+    if (employee) {   //route ma validation garni instead of this 
         employee.fullName = req.body.fullName || employee.fullName;
         employee.email = req.body.email || employee.email;
         employee.phone = req.body.phone || employee.phone;
