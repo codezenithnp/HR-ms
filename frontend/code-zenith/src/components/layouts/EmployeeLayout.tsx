@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -9,156 +9,248 @@ import {
   User,
   LogOut,
   Settings,
+  Menu,
+  X,
+  ChevronDown,
+  Bell,
+  Clock,
 } from 'lucide-react';
 
 export const EmployeeLayout: React.FC = () => {
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const navItems = [
+    { path: '/employee/dashboard',       icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/employee/attendance',      icon: Calendar,        label: 'Attendance' },
+    { path: '/employee/attendance/mark', icon: Clock,           label: 'Mark Attendance' },
+    { path: '/employee/leaves',          icon: FileText,        label: 'My Leaves' },
+    { path: '/employee/profile',         icon: User,            label: 'My Profile' },
+  ];
+
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'U';
+
   return (
-    <div className="min-vh-100 bg-light">
-      {/* Top Navbar */}
-      <nav className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
-        <div className="container-fluid">
-          <NavLink to="/employee/dashboard" className="navbar-brand d-flex align-items-center">
-            <div
-              className="bg-white text-primary rounded d-flex align-items-center justify-content-center me-2"
-              style={{ width: '36px', height: '36px' }}
-            >
-              <Building2 size={20} />
-            </div>
-            <span className="fw-bold">CodeZenith HR</span>
-          </NavLink>
+    <div className="aura-bg" style={{ minHeight: '100vh' }}>
+      {/* Mobile sidebar overlay */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
+      {/* Sidebar */}
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">
+            <Building2 size={22} />
+          </div>
+          <div className="sidebar-logo-text">
+            <div className="brand">CodeZenith</div>
+            <div className="subtitle">HR Portal</div>
+          </div>
           <button
-            className="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#employeeNav"
-            aria-controls="employeeNav"
-            aria-expanded="false"
-            aria-label="Toggle navigation"
+            className="btn btn-link p-0 d-lg-none ms-auto"
+            style={{ color: 'var(--af-on-surface-variant)' }}
+            onClick={() => setSidebarOpen(false)}
           >
-            <span className="navbar-toggler-icon"></span>
+            <X size={20} />
           </button>
+        </div>
 
-          <div className="collapse navbar-collapse" id="employeeNav">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <NavLink
-                  to="/employee/dashboard"
-                  className={({ isActive }) =>
-                    `nav-link d-flex align-items-center ${isActive ? 'active' : ''}`
-                  }
-                >
-                  <LayoutDashboard size={18} className="me-1" />
-                  Dashboard
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink
-                  to="/employee/attendance"
-                  className={({ isActive }) =>
-                    `nav-link d-flex align-items-center ${isActive ? 'active' : ''}`
-                  }
-                >
-                  <Calendar size={18} className="me-1" />
-                  Attendance
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink
-                  to="/employee/leaves"
-                  className={({ isActive }) =>
-                    `nav-link d-flex align-items-center ${isActive ? 'active' : ''}`
-                  }
-                >
-                  <FileText size={18} className="me-1" />
-                  Leaves
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink
-                  to="/employee/profile"
-                  className={({ isActive }) =>
-                    `nav-link d-flex align-items-center ${isActive ? 'active' : ''}`
-                  }
-                >
-                  <User size={18} className="me-1" />
-                  Profile
-                </NavLink>
-              </li>
-              {hasRole(['admin', 'hr', 'manager']) && (
-                <li className="nav-item">
-                  <NavLink
-                    to="/admin/dashboard"
-                    className="nav-link d-flex align-items-center"
-                  >
-                    <Settings size={18} className="me-1" />
-                    Admin Panel
-                  </NavLink>
-                </li>
-              )}
-            </ul>
+        {/* Navigation */}
+        <nav className="sidebar-nav">
+          <div className="sidebar-section-label">Employee Portal</div>
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/employee/attendance'}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </NavLink>
+          ))}
 
-            <div className="d-flex align-items-center">
-              <div className="dropdown">
-                <button
-                  className="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center"
-                  type="button"
-                  id="userDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <div
-                    className="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center me-2"
-                    style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}
-                  >
-                    {user?.name.charAt(0)}
-                  </div>
-                  <span className="d-none d-md-inline">{user?.name}</span>
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                  <li>
-                    <span className="dropdown-item-text">
-                      <div className="fw-semibold">{user?.name}</div>
-                      <div className="text-muted small">{user?.email}</div>
-                      <div className="text-muted small">{user?.employeeId}</div>
-                    </span>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <NavLink to="/employee/profile" className="dropdown-item">
-                      My Profile
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/employee/change-password" className="dropdown-item">
-                      Change Password
-                    </NavLink>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <button className="dropdown-item text-danger" onClick={handleLogout}>
-                      <LogOut size={16} className="me-2" />
-                      Logout
-                    </button>
-                  </li>
-                </ul>
+          {hasRole(['admin', 'hr', 'manager']) && (
+            <>
+              <div className="sidebar-section-label mt-2">Administration</div>
+              <NavLink
+                to="/admin/dashboard"
+                className="nav-link"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <Settings size={18} />
+                Admin Panel
+              </NavLink>
+            </>
+          )}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="avatar avatar-sm avatar-red" style={{ fontSize: '0.75rem' }}>
+              {initials}
+            </div>
+            <div className="flex-grow-1 min-w-0" style={{ overflow: 'hidden' }}>
+              <div
+                style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: 'var(--af-on-surface)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user?.name}
+              </div>
+              <div
+                style={{
+                  fontSize: '0.6875rem',
+                  color: 'var(--af-on-surface-variant)',
+                  fontFamily: 'var(--font-label)',
+                }}
+              >
+                {user?.employeeId || user?.role}
               </div>
             </div>
           </div>
         </div>
-      </nav>
+      </aside>
 
-      {/* Page Content */}
-      <div className="container-fluid py-4">
-        <Outlet />
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Top Navbar */}
+        <header className="top-navbar">
+          <button
+            className="btn btn-link p-0 me-3 d-lg-none"
+            style={{ color: 'var(--af-on-surface)' }}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={22} />
+          </button>
+
+          <div className="d-none d-lg-flex align-items-center" style={{ flex: 1 }}>
+            <span
+              style={{
+                fontSize: '0.8125rem',
+                color: 'var(--af-on-surface-variant)',
+                fontFamily: 'var(--font-label)',
+                fontWeight: 600,
+                letterSpacing: '0.03em',
+              }}
+            >
+              EMPLOYEE PORTAL
+            </span>
+          </div>
+
+          <div className="ms-auto d-flex align-items-center gap-3">
+            <button
+              className="btn btn-link p-0"
+              style={{ color: 'var(--af-on-surface-variant)' }}
+            >
+              <Bell size={20} />
+            </button>
+
+            <div className="position-relative">
+              <button
+                className="d-flex align-items-center gap-2 border-0 bg-transparent p-0"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+              >
+                <div className="avatar avatar-sm avatar-red" style={{ fontSize: '0.75rem' }}>
+                  {initials}
+                </div>
+                <div className="d-none d-md-block text-start" style={{ lineHeight: 1.3 }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--af-on-surface)' }}>
+                    {user?.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.6875rem',
+                      color: 'var(--af-on-surface-variant)',
+                      fontFamily: 'var(--font-label)',
+                    }}
+                  >
+                    {user?.employeeId}
+                  </div>
+                </div>
+                <ChevronDown size={14} style={{ color: 'var(--af-on-surface-variant)' }} />
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <div
+                    className="dropdown-menu show"
+                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 1000 }}
+                  >
+                    <span className="dropdown-item-text">
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--af-on-surface)' }}>
+                        {user?.name}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--af-on-surface-variant)' }}>
+                        {user?.email}
+                      </div>
+                      {user?.employeeId && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--af-on-surface-variant)', marginTop: 2 }}>
+                          {user.employeeId}
+                        </div>
+                      )}
+                    </span>
+                    <div className="dropdown-divider" />
+                    <NavLink
+                      to="/employee/profile"
+                      className="dropdown-item"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <User size={15} className="me-2" />
+                      My Profile
+                    </NavLink>
+                    <NavLink
+                      to="/employee/change-password"
+                      className="dropdown-item"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <Settings size={15} className="me-2" />
+                      Change Password
+                    </NavLink>
+                    <div className="dropdown-divider" />
+                    <button
+                      className="dropdown-item d-flex align-items-center"
+                      style={{ color: 'var(--af-primary)' }}
+                      onClick={handleLogout}
+                    >
+                      <LogOut size={15} className="me-2" />
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main style={{ padding: '1.5rem', flex: 1 }}>
+          <Outlet />
+        </main>
       </div>
     </div>
   );

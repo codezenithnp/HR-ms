@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Clock,
-  MapPin,
-  AlertCircle,
-  CheckCircle,
-  LogIn,
-  LogOut,
-  Calendar
-} from 'lucide-react';
+import { Clock, MapPin, AlertCircle, CheckCircle, LogIn, LogOut, Calendar } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, settingsService } from '../../services';
 import { LoadingSpinner, Badge } from '../../components/common';
@@ -17,23 +9,19 @@ import { AttendanceRecord } from '../../services/attendanceService';
 export const EmployeeMarkAttendancePage: React.FC = () => {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [submitting, setSubmitting]   = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
-  const [userShift, setUserShift] = useState<Shift | null>(null);
-  const [notes, setNotes] = useState('');
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [userShift, setUserShift]     = useState<Shift | null>(null);
+  const [notes, setNotes]             = useState('');
+  const [message, setMessage]         = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadInitialData();
-    }
-  }, [user]);
+  useEffect(() => { if (user) loadInitialData(); }, [user]);
 
   const loadInitialData = async () => {
     try {
@@ -41,14 +29,9 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
         attendanceService.getTodayAttendance(),
         settingsService.getShifts(),
       ]);
-
       setTodayRecord(todayRec);
-
-      // Find user shift or use first shift as default
-      const shift = shifts.length > 0 ? shifts[0] : null;
-      setUserShift(shift);
+      setUserShift(shifts.length > 0 ? shifts[0] : null);
     } catch (error: any) {
-      console.error('Failed to load attendance data:', error);
       setMessage({ type: 'error', text: 'Failed to load attendance data: ' + error.message });
     } finally {
       setLoading(false);
@@ -59,15 +42,11 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
     setSubmitting(true);
     setMessage(null);
     try {
-      let record;
-      if (type === 'check-in') {
-        record = await attendanceService.checkIn(undefined, notes);
-        setMessage({ type: 'success', text: 'Successfully checked in!' });
-      } else {
-        record = await attendanceService.checkOut(undefined, notes);
-        setMessage({ type: 'success', text: 'Successfully checked out!' });
-      }
+      const record = type === 'check-in'
+        ? await attendanceService.checkIn(undefined, notes)
+        : await attendanceService.checkOut(undefined, notes);
       setTodayRecord(record);
+      setMessage({ type: 'success', text: type === 'check-in' ? 'Successfully checked in!' : 'Successfully checked out!' });
       setNotes('');
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || `Failed to ${type}` });
@@ -76,58 +55,83 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner text="Loading attendance data..." />;
-  }
+  if (loading) return <LoadingSpinner text="Loading attendance data…" />;
 
-  const isCheckedIn = todayRecord && todayRecord.status !== 'absent' && todayRecord.checkIn && !todayRecord.checkOut;
-  const isCheckedOut = todayRecord && todayRecord.checkOut;
+  const isCheckedIn  = todayRecord && todayRecord.checkIn && !todayRecord.checkOut;
+  const isCheckedOut = todayRecord?.checkOut;
 
   return (
-    <div className="container py-4">
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Mark Attendance</h1>
+        <p className="page-subtitle">Record your check-in and check-out for today</p>
+      </div>
+
       <div className="row justify-content-center">
         <div className="col-md-8 col-lg-6">
-          <div className="card shadow-sm border-0">
-            <div className="card-body text-center p-5">
-              <div className="mb-4">
-                <div className="display-4 fw-bold text-primary mb-2">
+          <div className="card">
+            <div className="card-body text-center" style={{ padding: '2.5rem 2rem' }}>
+              {/* Live clock */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '3rem', letterSpacing: '-0.03em', color: 'var(--af-on-surface)', lineHeight: 1 }}>
                   {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
-                <div className="text-muted h5">
-                  <Calendar size={20} className="me-2 mb-1" />
+                <div style={{ fontSize: '0.9375rem', color: 'var(--af-on-surface-variant)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Calendar size={15} />
                   {currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
               </div>
 
               {message && (
-                <div className={`alert alert-${message.type === 'success' ? 'success' : 'danger'} d-flex align-items-center mb-4 text-start`}>
-                  {message.type === 'success' ? <CheckCircle size={20} className="me-2" /> : <AlertCircle size={20} className="me-2" />}
+                <div
+                  className={`d-flex align-items-center gap-2 mb-4`}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    background: message.type === 'success' ? 'rgba(0,106,72,0.08)' : 'rgba(189,0,26,0.08)',
+                    color: message.type === 'success' ? 'var(--af-tertiary)' : 'var(--af-primary)',
+                  }}
+                >
+                  {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                   {message.text}
                 </div>
               )}
 
-              <div className="bg-light rounded p-4 mb-4">
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Current Shift:</span>
-                  <span className="fw-semibold">{userShift?.name} ({userShift?.startTime} - {userShift?.endTime})</span>
+              {/* Shift info */}
+              <div style={{ background: 'var(--af-surface-container)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '1.25rem' }}>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="label-sm">Current Shift</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    {userShift ? `${userShift.name} (${userShift.startTime} – ${userShift.endTime})` : 'Unassigned'}
+                  </span>
                 </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted">Today's Status:</span>
-                  <Badge variant={todayRecord ? (todayRecord.status === 'present' || todayRecord.status === 'late' ? 'success' : 'warning') : 'secondary'}>
-                    {todayRecord ? todayRecord.status.toUpperCase() : 'NOT MARKED'}
-                  </Badge>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="label-sm">Today's Status</span>
+                  {todayRecord ? (
+                    ({
+                      present:    <Badge variant="success">Present</Badge>,
+                      late:       <Badge variant="warning">Late</Badge>,
+                      absent:     <Badge variant="danger">Absent</Badge>,
+                      'on-leave': <Badge variant="info">On Leave</Badge>,
+                    } as any)[todayRecord.status] || <Badge variant="secondary">{todayRecord.status}</Badge>
+                  ) : (
+                    <Badge variant="secondary">Not Marked</Badge>
+                  )}
                 </div>
               </div>
 
               {isCheckedIn && todayRecord?.checkIn && (
-                <div className="alert alert-info border-0 mb-4 py-2">
-                  <Clock size={16} className="me-2" />
-                  Working since {new Date(todayRecord.checkIn).toLocaleTimeString()}
+                <div style={{ background: 'rgba(70,72,212,0.07)', borderRadius: 'var(--radius-md)', padding: '0.625rem 1rem', marginBottom: '1.25rem', fontSize: '0.875rem', color: 'var(--af-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Clock size={15} />
+                  Working since {new Date(todayRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="form-label text-start d-block small fw-bold text-muted text-uppercase">Notes (Optional)</label>
+              {/* Notes */}
+              <div style={{ marginBottom: '1.25rem', textAlign: 'left' }}>
+                <label className="form-label">Notes (Optional)</label>
                 <textarea
                   className="form-control"
                   rows={2}
@@ -135,48 +139,51 @@ export const EmployeeMarkAttendancePage: React.FC = () => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   disabled={!!submitting || !!isCheckedOut}
-                ></textarea>
+                />
               </div>
 
-              <div className="d-grid gap-3">
+              {/* Action buttons */}
+              <div className="d-grid gap-2">
                 {!isCheckedIn && !isCheckedOut ? (
                   <button
-                    className="btn btn-primary btn-lg py-3 d-flex align-items-center justify-content-center"
+                    className="btn btn-primary btn-lg d-flex align-items-center justify-content-center gap-2"
+                    style={{ padding: '0.875rem' }}
                     onClick={() => handleAction('check-in')}
                     disabled={submitting}
                   >
-                    {submitting ? <LoadingSpinner size="sm" /> : <LogIn size={24} className="me-2" />}
+                    {submitting ? <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'af-spin 0.75s linear infinite', display: 'inline-block' }} /> : <LogIn size={20} />}
                     Punch In
                   </button>
                 ) : isCheckedIn ? (
                   <button
-                    className="btn btn-danger btn-lg py-3 d-flex align-items-center justify-content-center"
+                    className="btn btn-lg d-flex align-items-center justify-content-center gap-2"
+                    style={{ padding: '0.875rem', background: 'var(--af-primary)', color: 'white', border: 'none' }}
                     onClick={() => handleAction('check-out')}
                     disabled={submitting}
                   >
-                    {submitting ? <LoadingSpinner size="sm" /> : <LogOut size={24} className="me-2" />}
+                    {submitting ? <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'af-spin 0.75s linear infinite', display: 'inline-block' }} /> : <LogOut size={20} />}
                     Punch Out
                   </button>
                 ) : (
-                  <div className="alert alert-success border-0 py-3 mb-0">
-                    <CheckCircle size={32} className="d-block mx-auto mb-2" />
-                    <h5 className="mb-1">All done for today!</h5>
-                    <p className="small mb-0">
-                      Checked in: {todayRecord?.checkIn ? new Date(todayRecord.checkIn).toLocaleTimeString() : '--'} | 
-                      Checked out: {todayRecord?.checkOut ? new Date(todayRecord.checkOut).toLocaleTimeString() : '--'}
+                  <div style={{ background: 'rgba(0,106,72,0.08)', borderRadius: 'var(--radius-md)', padding: '1.25rem', textAlign: 'center' }}>
+                    <CheckCircle size={32} color="var(--af-tertiary)" style={{ marginBottom: '0.5rem' }} />
+                    <h5 style={{ fontWeight: 700, color: 'var(--af-tertiary)', marginBottom: '0.25rem' }}>All done for today!</h5>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--af-on-surface-variant)', margin: 0 }}>
+                      In: {todayRecord?.checkIn ? new Date(todayRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'} &nbsp;·&nbsp;
+                      Out: {todayRecord?.checkOut ? new Date(todayRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 pt-3 border-top text-muted small">
-                <MapPin size={14} className="me-1" />
-                Location tracking is enabled for attendance marking
+              <div style={{ marginTop: '1.5rem', fontSize: '0.8125rem', color: 'var(--af-on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                <MapPin size={13} /> Location tracking is enabled for attendance marking
               </div>
             </div>
           </div>
         </div>
       </div>
+      <style>{`@keyframes af-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

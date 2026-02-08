@@ -14,6 +14,25 @@ export interface AttendanceRecord {
   notes?: string;
 }
 
+const normalizeRecord = (record: any): AttendanceRecord => {
+  const checkIn  = record.checkIn  ? new Date(record.checkIn)  : null;
+  const checkOut = record.checkOut ? new Date(record.checkOut) : null;
+  const totalHours = checkIn && checkOut
+    ? parseFloat(((checkOut.getTime() - checkIn.getTime()) / 3_600_000).toFixed(2))
+    : null;
+  const rawStatus = record.status || 'absent';
+  const status = rawStatus === 'leave' ? 'on-leave' : rawStatus;
+  return {
+    ...record,
+    id:           record._id,
+    employeeId:   record.employee?.employeeId,
+    employeeName: record.employee?.fullName,
+    department:   record.employee?.department,
+    totalHours,
+    status,
+  };
+};
+
 export const attendanceService = {
   /**
    * Get all attendance records
@@ -27,13 +46,7 @@ export const attendanceService = {
     const queryString = params.toString();
     const data = await apiClient(`/attendance${queryString ? `?${queryString}` : ''}`);
 
-    return data.map((record: any) => ({
-      ...record,
-      id: record._id,
-      employeeId: record.employee?.employeeId,
-      employeeName: record.employee?.fullName,
-      department: record.employee?.department,
-    }));
+    return data.map(normalizeRecord);
   },
 
   /**
@@ -41,13 +54,7 @@ export const attendanceService = {
    */
   getMyAttendance: async (): Promise<AttendanceRecord[]> => {
     const data = await apiClient('/attendance/me');
-    return data.map((record: any) => ({
-      ...record,
-      id: record._id,
-      employeeId: record.employee?.employeeId,
-      employeeName: record.employee?.fullName,
-      department: record.employee?.department,
-    }));
+    return data.map(normalizeRecord);
   },
 
   /**

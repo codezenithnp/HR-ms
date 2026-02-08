@@ -1,22 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User as UserIcon, Mail, Shield, Edit3, Save, AlertCircle, Lock } from 'lucide-react';
+import { Mail, Shield, Edit3, Save, AlertCircle, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { LoadingSpinner, Badge } from '../../components/common';
 
 export const AdminProfilePage: React.FC = () => {
   const { user, updateUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [success, setSuccess]   = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-  });
+  const [formData, setFormData] = useState({ name: user?.name || '', email: user?.email || '' });
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -29,13 +25,12 @@ export const AdminProfilePage: React.FC = () => {
         setLoading(false);
       }
     };
-
     loadProfile();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -43,10 +38,7 @@ export const AdminProfilePage: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      const updated = await authService.updateProfile({
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-      });
+      const updated = await authService.updateProfile({ name: formData.name.trim(), email: formData.email.trim() });
       updateUser({ name: updated.name, email: updated.email });
       setSuccess('Profile updated successfully.');
       setIsEditing(false);
@@ -57,45 +49,48 @@ export const AdminProfilePage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner text="Loading profile..." />;
-  }
+  if (loading) return <LoadingSpinner text="Loading profile…" />;
+
+  const initial = (user?.name || 'A').charAt(0).toUpperCase();
 
   return (
-    <div className="container-fluid p-0">
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">My Profile</h1>
+        <p className="page-subtitle">Manage your account information and preferences</p>
+      </div>
+
       <div className="row g-4">
+        {/* Left card — identity */}
         <div className="col-lg-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body text-center p-4">
-              <div
-                className="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '100px', height: '100px' }}
-              >
-                <UserIcon size={48} />
+          <div className="card">
+            <div className="card-body text-center" style={{ padding: '2rem 1.5rem' }}>
+              <div className="avatar avatar-2xl avatar-red mx-auto mb-3" style={{ fontSize: '2rem' }}>
+                {initial}
               </div>
-              <h4 className="mb-1">{user?.name}</h4>
-              <p className="text-muted mb-3">{user?.email}</p>
-              <Badge variant="primary" className="text-uppercase">
-                {user?.role}
-              </Badge>
-              <hr className="my-4" />
-              <div className="text-start">
-                <div className="d-flex align-items-center mb-3">
-                  <div className="bg-light p-2 rounded me-3 text-muted">
-                    <Mail size={16} />
+              <h4 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{user?.name}</h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)', marginBottom: '0.75rem' }}>{user?.email}</p>
+              <Badge variant="primary">{user?.role}</Badge>
+
+              <hr style={{ margin: '1.5rem 0', borderColor: 'var(--af-surface-container)' }} />
+
+              <div className="text-start d-flex flex-column gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--af-surface-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Mail size={15} color="var(--af-on-surface-variant)" />
                   </div>
                   <div>
-                    <small className="text-muted d-block">Email Address</small>
-                    <span className="fw-medium small">{user?.email}</span>
+                    <div className="label-sm mb-0">Email Address</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{user?.email}</div>
                   </div>
                 </div>
-                <div className="d-flex align-items-center">
-                  <div className="bg-light p-2 rounded me-3 text-muted">
-                    <Shield size={16} />
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--af-surface-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Shield size={15} color="var(--af-on-surface-variant)" />
                   </div>
                   <div>
-                    <small className="text-muted d-block">Role</small>
-                    <span className="fw-medium small text-capitalize">{user?.role}</span>
+                    <div className="label-sm mb-0">Role</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.8125rem', textTransform: 'capitalize' }}>{user?.role}</div>
                   </div>
                 </div>
               </div>
@@ -103,77 +98,51 @@ export const AdminProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Right card — editable form */}
         <div className="col-lg-8">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-transparent d-flex align-items-center justify-content-between py-3">
+          <div className="card">
+            <div className="card-header d-flex align-items-center justify-content-between">
               <h5 className="mb-0">Account Details</h5>
               <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => {
-                  setIsEditing(prev => !prev);
-                  setError(null);
-                  setSuccess(null);
-                }}
+                className="btn btn-sm"
+                style={{ background: 'rgba(70,72,212,0.08)', color: 'var(--af-secondary)', border: 'none', fontSize: '0.8125rem' }}
+                onClick={() => { setIsEditing((p) => !p); setError(null); setSuccess(null); }}
               >
-                <Edit3 size={14} className="me-1" />
+                <Edit3 size={13} style={{ marginRight: 4 }} />
                 {isEditing ? 'Cancel' : 'Edit Profile'}
               </button>
             </div>
-            <div className="card-body p-4">
+            <div className="card-body" style={{ padding: '1.5rem' }}>
               {error && (
-                <div className="alert alert-danger d-flex align-items-center">
-                  <AlertCircle size={18} className="me-2" />
-                  {error}
+                <div className="alert alert-danger d-flex align-items-center gap-2 mb-4" style={{ fontSize: '0.875rem' }}>
+                  <AlertCircle size={16} /> {error}
                 </div>
               )}
               {success && (
-                <div className="alert alert-success">
-                  {success}
-                </div>
+                <div className="alert alert-success mb-4" style={{ fontSize: '0.875rem' }}>{success}</div>
               )}
 
-              <div className="row g-4">
+              <div className="row g-3 mb-4">
                 <div className="col-md-6">
-                  <label className="form-label text-muted small">Full Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    className="form-control"
-                    value={formData.name}
-                    onChange={handleChange}
-                    disabled={!isEditing || saving}
-                  />
+                  <label className="form-label">Full Name</label>
+                  <input type="text" name="name" className="form-control" value={formData.name} onChange={handleChange} disabled={!isEditing || saving} />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label text-muted small">Email Address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    className="form-control"
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={!isEditing || saving}
-                  />
+                  <label className="form-label">Email Address</label>
+                  <input type="email" name="email" className="form-control" value={formData.email} onChange={handleChange} disabled={!isEditing || saving} />
                 </div>
               </div>
 
-              <div className="d-flex flex-wrap gap-2 mt-4">
-                <Link to="/admin/change-password" className="btn btn-light">
-                  <Lock size={16} className="me-2" />
-                  Change Password
+              <div className="d-flex flex-wrap gap-2">
+                <Link to="/admin/change-password" className="btn btn-secondary d-flex align-items-center gap-2">
+                  <Lock size={15} /> Change Password
                 </Link>
                 {isEditing && (
-                  <button
-                    className="btn btn-primary d-inline-flex align-items-center"
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
+                  <button className="btn btn-primary d-flex align-items-center gap-2" onClick={handleSave} disabled={saving}>
                     {saving ? (
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    ) : (
-                      <Save size={16} className="me-2" />
-                    )}
-                    Save Changes
+                      <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'af-spin 0.75s linear infinite', display: 'inline-block' }} />
+                    ) : <Save size={15} />}
+                    {saving ? 'Saving…' : 'Save Changes'}
                   </button>
                 )}
               </div>
@@ -181,6 +150,7 @@ export const AdminProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+      <style>{`@keyframes af-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

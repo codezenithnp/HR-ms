@@ -45,7 +45,16 @@ export const getEmployees = async (req, res) => {
 // @route   GET /api/employees/:id
 // @access  Private (Admin/HR/Manager)
 export const getEmployeeById = async (req, res) => {
-    const employee = await Employee.findById(req.params.id);
+    const { id } = req.params;
+
+    // Support both MongoDB _id and string employeeId (e.g. CZ-ENG-001)
+    let employee = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+        employee = await Employee.findById(id);
+    }
+    if (!employee) {
+        employee = await Employee.findOne({ employeeId: id });
+    }
 
     if (employee) {
         res.json(employee);

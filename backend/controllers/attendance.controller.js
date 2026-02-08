@@ -108,7 +108,16 @@ export const getAttendance = async (req, res) => {
 
     const query = {};
 
-    if (employeeId) query.employee = employeeId;
+    if (employeeId) {
+        // Support both MongoDB _id and string employeeId (e.g. CZ-ENG-001)
+        if (employeeId.match(/^[0-9a-fA-F]{24}$/)) {
+            query.employee = employeeId;
+        } else {
+            const emp = await Employee.findOne({ employeeId });
+            if (emp) query.employee = emp._id;
+            else query.employee = null; // No results
+        }
+    }
 
     if (startDate || endDate) {
         query.date = {};

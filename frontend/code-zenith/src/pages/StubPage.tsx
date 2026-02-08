@@ -8,19 +8,13 @@ interface StubPageProps {
 
 export const StubPage: React.FC<StubPageProps> = ({ title, description }) => {
   return (
-    <div className="text-center py-5">
-      <div
-        className="bg-warning bg-opacity-10 text-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
-        style={{ width: '100px', height: '100px' }}
-      >
-        <Construction size={48} />
+    <div className="empty-state" style={{ minHeight: '60vh' }}>
+      <div style={{ width: 72, height: 72, borderRadius: 'var(--radius-lg)', background: 'rgba(234,179,8,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+        <Construction size={36} color="#b45309" />
       </div>
-      <h1 className="h2 mb-3">{title}</h1>
-      <p className="text-muted mb-4">
-        {description || 'This page is under construction and will be implemented soon.'}
-      </p>
-      <p className="small text-muted">
-        Follow the established patterns in the codebase to implement this page.
+      <h5 style={{ fontWeight: 700, color: 'var(--af-on-surface)', marginBottom: '0.5rem' }}>{title}</h5>
+      <p style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)', margin: 0 }}>
+        {description || 'This page is under construction and will be available soon.'}
       </p>
     </div>
   );

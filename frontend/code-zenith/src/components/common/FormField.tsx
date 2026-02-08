@@ -28,7 +28,7 @@ export const FormField: React.FC<FormFieldProps> = (props) => {
 
   const renderField = () => {
     if (props.type === 'select') {
-      const { options, ...selectProps } = rest as SelectFieldProps;
+      const { options, label: _l, error: _e, required: _r, helpText: _h, ...selectProps } = props as SelectFieldProps;
       return (
         <select
           {...selectProps}
@@ -43,19 +43,21 @@ export const FormField: React.FC<FormFieldProps> = (props) => {
         </select>
       );
     } else if (props.type === 'textarea') {
-      const textareaProps = rest as TextareaHTMLAttributes<HTMLTextAreaElement>;
+      const { label: _l, error: _e, required: _r, helpText: _h, ...textareaProps } =
+        props as TextareaFieldProps & BaseFieldProps;
       return (
         <textarea
-          {...textareaProps}
+          {...(textareaProps as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           id={id}
           className={`form-control ${error ? 'is-invalid' : ''}`}
         />
       );
     } else {
-      const inputProps = rest as InputHTMLAttributes<HTMLInputElement>;
+      const { label: _l, error: _e, required: _r, helpText: _h, ...inputProps } =
+        props as InputFieldProps & BaseFieldProps;
       return (
         <input
-          {...inputProps}
+          {...(inputProps as InputHTMLAttributes<HTMLInputElement>)}
           type={props.type || 'text'}
           id={id}
           className={`form-control ${error ? 'is-invalid' : ''}`}
@@ -68,11 +70,27 @@ export const FormField: React.FC<FormFieldProps> = (props) => {
     <div className="mb-3">
       <label htmlFor={id} className="form-label">
         {label}
-        {required && <span className="text-danger ms-1">*</span>}
+        {required && (
+          <span style={{ color: 'var(--af-primary)', marginLeft: '0.25rem' }}>*</span>
+        )}
       </label>
       {renderField()}
-      {helpText && <div className="form-text">{helpText}</div>}
-      {error && <div className="invalid-feedback d-block">{error}</div>}
+      {helpText && (
+        <div className="form-text">{helpText}</div>
+      )}
+      {error && (
+        <div
+          style={{
+            fontSize: '0.75rem',
+            fontFamily: 'var(--font-label)',
+            color: 'var(--af-error)',
+            marginTop: '0.25rem',
+            display: 'block',
+          }}
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 };

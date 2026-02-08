@@ -1,44 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import {
-  User as UserIcon,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Briefcase,
-  Shield,
-  Edit,
-  Info
-} from 'lucide-react';
+import { Mail, Phone, MapPin, Calendar, Briefcase, Shield, Edit, Info } from 'lucide-react';
 import { employeeService } from '../../services';
 import { Employee } from '../../services/employeeService';
 import { LoadingSpinner, Badge } from '../../components/common';
 
 export const EmployeeProfilePage: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [activeTab, setActiveTab] = useState<'personal' | 'job' | 'account'>('personal');
   const [isEditing, setIsEditing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    phone: '',
-    address: '',
-  });
+  const [error, setError]       = useState<string | null>(null);
+  const [success, setSuccess]   = useState<string | null>(null);
+  const [formData, setFormData] = useState({ phone: '', address: '' });
 
-  useEffect(() => {
-    loadEmployeeDetails();
-  }, []);
+  useEffect(() => { loadEmployeeDetails(); }, []);
 
   const loadEmployeeDetails = async () => {
     try {
       const data = await employeeService.getMyProfile();
       setEmployee(data);
-      setFormData({
-        phone: data.phone || '',
-        address: data.address || '',
-      });
+      setFormData({ phone: data.phone || '', address: data.address || '' });
     } catch (error) {
       console.error('Failed to load employee details:', error);
     } finally {
@@ -48,7 +30,7 @@ export const EmployeeProfilePage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -57,10 +39,7 @@ export const EmployeeProfilePage: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      const updated = await employeeService.updateMyProfile({
-        phone: formData.phone,
-        address: formData.address,
-      });
+      const updated = await employeeService.updateMyProfile({ phone: formData.phone, address: formData.address });
       setEmployee(updated);
       setSuccess('Profile updated successfully.');
       setIsEditing(false);
@@ -71,53 +50,62 @@ export const EmployeeProfilePage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner text="Loading profile..." />;
-  }
+  if (loading) return <LoadingSpinner text="Loading profile…" />;
+  if (!employee) return <div className="empty-state"><p style={{ color: 'var(--af-error)' }}>Failed to load profile data.</p></div>;
 
-  if (!employee) {
-    return (
-      <div className="text-center py-5">
-        <p className="text-danger">Failed to load profile data.</p>
+  const name    = employee.fullName || employee.name || 'Employee';
+  const initial = name.charAt(0).toUpperCase();
+
+  const tabs: Array<{ key: 'personal' | 'job' | 'account'; label: string }> = [
+    { key: 'personal', label: 'Personal Details' },
+    { key: 'job',      label: 'Job Information' },
+    { key: 'account',  label: 'Account' },
+  ];
+
+  const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) => (
+    <div>
+      <div className="label-sm mb-1">{label}</div>
+      <div className="d-flex align-items-center gap-2" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+        <Icon size={14} color="var(--af-on-surface-variant)" />
+        {value}
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="container-fluid p-0">
-      <div className="row">
-        <div className="col-lg-4 mb-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body text-center py-4">
-              <div
-                className="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '100px', height: '100px' }}
-              >
-                <UserIcon size={48} />
-              </div>
-              <h4 className="mb-1">{employee.fullName || employee.name}</h4>
-              <p className="text-muted mb-3">{employee.position}</p>
-              <Badge variant={employee.status === 'active' ? 'success' : 'warning'}>
-                {employee.status.toUpperCase()}
-              </Badge>
-              <hr className="my-4" />
-              <div className="text-start">
-                <div className="d-flex align-items-center mb-3">
-                  <div className="bg-light p-2 rounded me-3 text-muted">
-                    <Mail size={16} />
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">My Profile</h1>
+        <p className="page-subtitle">Your personal and professional information</p>
+      </div>
+
+      <div className="row g-4">
+        {/* Left — identity card */}
+        <div className="col-lg-4">
+          <div className="card">
+            <div className="card-body text-center" style={{ padding: '2rem 1.5rem' }}>
+              <div className="avatar avatar-2xl avatar-red mx-auto mb-3" style={{ fontSize: '2rem' }}>{initial}</div>
+              <h4 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{name}</h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)', marginBottom: '0.75rem' }}>{employee.position}</p>
+              <Badge variant={employee.status === 'active' ? 'success' : 'warning'}>{employee.status}</Badge>
+              <hr style={{ margin: '1.5rem 0', borderColor: 'var(--af-surface-container)' }} />
+              <div className="text-start d-flex flex-column gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--af-surface-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Mail size={15} color="var(--af-on-surface-variant)" />
                   </div>
                   <div>
-                    <small className="text-muted d-block">Email Address</small>
-                    <span className="fw-medium small">{employee.email}</span>
+                    <div className="label-sm mb-0">Email</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{employee.email}</div>
                   </div>
                 </div>
-                <div className="d-flex align-items-center mb-0">
-                  <div className="bg-light p-2 rounded me-3 text-muted">
-                    <Phone size={16} />
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--af-surface-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Phone size={15} color="var(--af-on-surface-variant)" />
                   </div>
                   <div>
-                    <small className="text-muted d-block">Phone Number</small>
-                    <span className="fw-medium small">{employee.phone || 'Not provided'}</span>
+                    <div className="label-sm mb-0">Phone</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{employee.phone || 'Not provided'}</div>
                   </div>
                 </div>
               </div>
@@ -125,168 +113,103 @@ export const EmployeeProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Right — tabbed details */}
         <div className="col-lg-8">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-transparent p-0">
-              <ul className="nav nav-tabs nav-fill border-0">
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-3 border-0 ${activeTab === 'personal' ? 'active fw-bold text-primary border-bottom border-primary border-3' : 'text-muted'}`}
-                    onClick={() => setActiveTab('personal')}
-                  >
-                    Personal Details
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-3 border-0 ${activeTab === 'job' ? 'active fw-bold text-primary border-bottom border-primary border-3' : 'text-muted'}`}
-                    onClick={() => setActiveTab('job')}
-                  >
-                    Job Information
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-3 border-0 ${activeTab === 'account' ? 'active fw-bold text-primary border-bottom border-primary border-3' : 'text-muted'}`}
-                    onClick={() => setActiveTab('account')}
-                  >
-                    Account
-                  </button>
-                </li>
+          <div className="card">
+            <div className="card-header" style={{ padding: 0 }}>
+              <ul className="nav nav-tabs" style={{ padding: '0 1.25rem', gap: '0.25rem' }}>
+                {tabs.map(({ key, label }) => (
+                  <li key={key} className="nav-item">
+                    <button
+                      className={`nav-link${activeTab === key ? ' active' : ''}`}
+                      style={{ fontWeight: activeTab === key ? 700 : 500, fontSize: '0.875rem', padding: '0.875rem 1rem' }}
+                      onClick={() => setActiveTab(key)}
+                    >
+                      {label}
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div className="card-body p-4 p-md-5">
+            <div className="card-body" style={{ padding: '1.5rem' }}>
               {activeTab === 'personal' && (
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h5 className="mb-0">Personal Information</h5>
+                    <h5 style={{ fontWeight: 700, margin: 0 }}>Personal Information</h5>
                     <button
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => {
-                        setIsEditing(prev => !prev);
-                        setError(null);
-                        setSuccess(null);
-                      }}
+                      className="btn btn-sm"
+                      style={{ background: 'rgba(70,72,212,0.08)', color: 'var(--af-secondary)', border: 'none', fontSize: '0.8125rem' }}
+                      onClick={() => { setIsEditing((p) => !p); setError(null); setSuccess(null); }}
                     >
-                      <Edit size={14} className="me-1" /> {isEditing ? 'Cancel' : 'Edit Profile'}
+                      <Edit size={13} style={{ marginRight: 4 }} />
+                      {isEditing ? 'Cancel' : 'Edit'}
                     </button>
                   </div>
 
-                  {error && (
-                    <div className="alert alert-danger small">{error}</div>
-                  )}
-                  {success && (
-                    <div className="alert alert-success small">{success}</div>
-                  )}
+                  {error   && <div className="alert alert-danger mb-3" style={{ fontSize: '0.875rem' }}>{error}</div>}
+                  {success && <div className="alert alert-success mb-3" style={{ fontSize: '0.875rem' }}>{success}</div>}
 
                   <div className="row g-4">
-                    <div className="col-md-6 text-sm">
-                      <label className="text-muted d-block mb-1">Full Name</label>
-                      <p className="fw-medium mb-0">{employee.fullName || employee.name}</p>
+                    <div className="col-md-6">
+                      <InfoRow icon={Shield} label="Full Name" value={name} />
                     </div>
-                    <div className="col-md-6 text-sm">
-                      <label className="text-muted d-block mb-1">Date of Birth</label>
-                      <p className="fw-medium mb-0">
-                        <Calendar size={14} className="me-2 text-muted" />
-                        {employee.dateOfBirth || employee.dob || 'Not provided'}
-                      </p>
+                    <div className="col-md-6">
+                      <InfoRow icon={Calendar} label="Date of Birth" value={employee.dateOfBirth || (employee as any).dob || 'Not provided'} />
                     </div>
-                    <div className="col-md-6 text-sm">
-                      <label className="text-muted d-block mb-1">Phone Number</label>
+                    <div className="col-md-6">
+                      <div className="label-sm mb-1">Phone Number</div>
                       {isEditing ? (
-                        <input
-                          type="text"
-                          name="phone"
-                          className="form-control"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          disabled={saving}
-                        />
+                        <input type="text" name="phone" className="form-control" value={formData.phone} onChange={handleChange} disabled={saving} />
                       ) : (
-                        <p className="fw-medium mb-0">{employee.phone || 'Not provided'}</p>
+                        <div className="d-flex align-items-center gap-2" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          <Phone size={14} color="var(--af-on-surface-variant)" />
+                          {employee.phone || 'Not provided'}
+                        </div>
                       )}
                     </div>
-                    <div className="col-12 text-sm">
-                      <label className="text-muted d-block mb-1">Residential Address</label>
+                    <div className="col-12">
+                      <div className="label-sm mb-1">Residential Address</div>
                       {isEditing ? (
-                        <textarea
-                          name="address"
-                          className="form-control"
-                          rows={3}
-                          value={formData.address}
-                          onChange={handleChange}
-                          disabled={saving}
-                        />
+                        <textarea name="address" className="form-control" rows={3} value={formData.address} onChange={handleChange} disabled={saving} />
                       ) : (
-                        <p className="fw-medium mb-0">
-                          <MapPin size={14} className="me-2 text-muted" />
+                        <div className="d-flex align-items-center gap-2" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          <MapPin size={14} color="var(--af-on-surface-variant)" />
                           {employee.address || 'Not provided'}
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
 
                   {isEditing && (
                     <div className="d-flex justify-content-end mt-4">
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleSave}
-                        disabled={saving}
-                      >
-                        {saving && (
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        )}
+                      <button className="btn btn-primary d-flex align-items-center gap-2" onClick={handleSave} disabled={saving}>
+                        {saving && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'af-spin 0.75s linear infinite', display: 'inline-block' }} />}
                         Save Changes
                       </button>
                     </div>
                   )}
 
-                  <div className="alert alert-secondary mt-5 small d-flex align-items-start border-0 bg-light">
-                    <Info size={16} className="me-2 mt-1 text-primary" />
-                    <div>
-                      Some fields are managed by HR. If you need to update them, please contact your HR representative.
-                    </div>
+                  <div className="d-flex align-items-start gap-2 mt-4" style={{ background: 'rgba(70,72,212,0.06)', borderRadius: 'var(--radius-md)', padding: '0.875rem 1rem', fontSize: '0.8125rem', color: 'var(--af-on-surface-variant)' }}>
+                    <Info size={15} style={{ flexShrink: 0, color: 'var(--af-secondary)', marginTop: 1 }} />
+                    Some fields are managed by HR. Contact your HR representative to update them.
                   </div>
                 </div>
               )}
 
               {activeTab === 'job' && (
                 <div>
-                  <h5 className="mb-4">Professional Information</h5>
-                  <div className="row g-4 text-sm">
+                  <h5 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Professional Information</h5>
+                  <div className="row g-4">
+                    <div className="col-md-6"><InfoRow icon={Shield} label="Employee ID" value={employee.employeeId} /></div>
+                    <div className="col-md-6"><InfoRow icon={Briefcase} label="Department" value={employee.department} /></div>
+                    <div className="col-md-6"><InfoRow icon={Briefcase} label="Position" value={employee.position} /></div>
                     <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Employee ID</label>
-                      <p className="fw-medium mb-0">
-                        <Shield size={14} className="me-2 text-muted" />
-                        {employee.employeeId}
-                      </p>
+                      <InfoRow icon={Calendar} label="Joining Date" value={new Date(employee.joinDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} />
                     </div>
+                    <div className="col-md-6"><InfoRow icon={Shield} label="Employment Type" value="Full Time" /></div>
                     <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Department</label>
-                      <p className="fw-medium mb-0">
-                        <Briefcase size={14} className="me-2 text-muted" />
-                        {employee.department}
-                      </p>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Current Position</label>
-                      <p className="fw-medium mb-0">{employee.position}</p>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Joining Date</label>
-                      <p className="fw-medium mb-0">
-                        <Calendar size={14} className="me-2 text-muted" />
-                        {new Date(employee.joinDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Employment Type</label>
-                      <p className="fw-medium mb-0">Full Time</p>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Reporting Role</label>
-                      <p className="fw-medium mb-0 text-capitalize">{employee.role}</p>
+                      <InfoRow icon={Shield} label="Role" value={<span style={{ textTransform: 'capitalize' }}>{employee.role}</span>} />
                     </div>
                   </div>
                 </div>
@@ -294,27 +217,15 @@ export const EmployeeProfilePage: React.FC = () => {
 
               {activeTab === 'account' && (
                 <div>
-                  <h5 className="mb-4">Account Overview</h5>
-                  <div className="row g-4 text-sm">
+                  <h5 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Account Overview</h5>
+                  <div className="row g-4">
+                    <div className="col-md-6"><InfoRow icon={Mail} label="Account Email" value={employee.email} /></div>
                     <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Account Email</label>
-                      <p className="fw-medium mb-0">
-                        <Mail size={14} className="me-2 text-muted" />
-                        {employee.email}
-                      </p>
+                      <InfoRow icon={Shield} label="Role" value={<span style={{ textTransform: 'capitalize' }}>{employee.role}</span>} />
                     </div>
                     <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Role</label>
-                      <p className="fw-medium mb-0 text-capitalize">
-                        <Shield size={14} className="me-2 text-muted" />
-                        {employee.role}
-                      </p>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="text-muted d-block mb-1">Status</label>
-                      <Badge variant={employee.status === 'active' ? 'success' : 'warning'}>
-                        {employee.status.toUpperCase()}
-                      </Badge>
+                      <div className="label-sm mb-1">Status</div>
+                      <Badge variant={employee.status === 'active' ? 'success' : 'warning'}>{employee.status}</Badge>
                     </div>
                   </div>
                 </div>
@@ -323,6 +234,7 @@ export const EmployeeProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+      <style>{`@keyframes af-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

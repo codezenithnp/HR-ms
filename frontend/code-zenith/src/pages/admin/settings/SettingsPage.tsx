@@ -5,20 +5,14 @@ import { settingsService, Department, Holiday } from '../../../services/settings
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
-  const [loading, setLoading] = useState(true);
-
-  // Data State
-  const [depts, setDepts] = useState<Department[]>([]);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [depts, setDepts]         = useState<Department[]>([]);
+  const [holidays, setHolidays]   = useState<Holiday[]>([]);
   const [workingDays, setWorkingDays] = useState<Record<string, boolean>>({});
-
-  // Form State for new items
-  const [newDept, setNewDept] = useState({ name: '' });
+  const [newDept, setNewDept]     = useState({ name: '' });
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'public' as const });
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -26,7 +20,7 @@ export const SettingsPage: React.FC = () => {
       const [deptsData, holidaysData, workingDaysData] = await Promise.all([
         settingsService.getDepartments(),
         settingsService.getHolidays(),
-        settingsService.getWorkingDays()
+        settingsService.getWorkingDays(),
       ]);
       setDepts(deptsData);
       setHolidays(holidaysData);
@@ -41,11 +35,7 @@ export const SettingsPage: React.FC = () => {
   const handleDayToggle = async (day: string) => {
     const updated = { ...workingDays, [day]: !workingDays[day] };
     setWorkingDays(updated);
-    try {
-      await settingsService.updateWorkingDays(updated);
-    } catch (error) {
-      console.error('Failed to update working days:', error);
-    }
+    try { await settingsService.updateWorkingDays(updated); } catch { /* silent */ }
   };
 
   const handleAddDept = async (e: React.FormEvent) => {
@@ -55,9 +45,7 @@ export const SettingsPage: React.FC = () => {
       await settingsService.createDepartment(newDept);
       setNewDept({ name: '' });
       loadSettings();
-    } catch (error) {
-      alert('Failed to add department');
-    }
+    } catch { alert('Failed to add department'); }
   };
 
   const handleAddHoliday = async (e: React.FormEvent) => {
@@ -67,147 +55,126 @@ export const SettingsPage: React.FC = () => {
       await settingsService.createHoliday(newHoliday);
       setNewHoliday({ name: '', date: '', type: 'public' });
       loadSettings();
-    } catch (error) {
-      alert('Failed to add holiday');
-    }
+    } catch { alert('Failed to add holiday'); }
   };
 
   const handleDeleteHoliday = async (id: string) => {
-    if (window.confirm('Delete this holiday?')) {
-      await settingsService.deleteHoliday(id);
-      loadSettings();
-    }
+    if (window.confirm('Delete this holiday?')) { await settingsService.deleteHoliday(id); loadSettings(); }
   };
 
   const handleDeleteDept = async (id: string) => {
-    if (window.confirm('Delete this department?')) {
-      await settingsService.deleteDepartment(id);
-      loadSettings();
-    }
+    if (window.confirm('Delete this department?')) { await settingsService.deleteDepartment(id); loadSettings(); }
   };
 
-  if (loading) return <LoadingSpinner text="Loading system configurations..." />;
+  if (loading) return <LoadingSpinner text="Loading system configurations…" />;
+
+  const navItems = [
+    { key: 'general',     icon: Building2,   label: 'Organization' },
+    { key: 'departments', icon: Globe,        label: 'Departments' },
+    { key: 'holidays',    icon: Calendar,     label: 'Holiday Calendar' },
+    { key: 'working',     icon: Clock,        label: 'Working Days' },
+    { key: 'security',    icon: ShieldCheck,  label: 'Security & Access' },
+  ];
 
   return (
-    <div className="container-fluid p-0">
-      <div className="mb-4">
-        <h1 className="h3 mb-1">System Settings</h1>
-        <p className="text-muted">Configure organization preferences and infrastructure</p>
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">System Settings</h1>
+        <p className="page-subtitle">Configure organization preferences and infrastructure</p>
       </div>
 
       <div className="row g-4">
-        {/* Navigation Sidebar */}
+        {/* Nav sidebar */}
         <div className="col-md-3">
-          <div className="list-group border-0 shadow-sm">
-            <button
-              className={`list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center ${activeTab === 'general' ? 'active rounded' : ''}`}
-              onClick={() => setActiveTab('general')}
-            >
-              <Building2 size={18} className="me-3" />
-              Organizational Info
-            </button>
-            <button
-              className={`list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center ${activeTab === 'departments' ? 'active rounded' : ''}`}
-              onClick={() => setActiveTab('departments')}
-            >
-              <Globe size={18} className="me-3" />
-              Departments
-            </button>
-            <button
-              className={`list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center ${activeTab === 'holidays' ? 'active rounded' : ''}`}
-              onClick={() => setActiveTab('holidays')}
-            >
-              <Calendar size={18} className="me-3" />
-              Holiday Calendar
-            </button>
-            <button
-              className={`list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center ${activeTab === 'working' ? 'active rounded' : ''}`}
-              onClick={() => setActiveTab('working')}
-            >
-              <Clock size={18} className="me-3" />
-              Working Days
-            </button>
-            <button
-              className={`list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center ${activeTab === 'security' ? 'active rounded' : ''}`}
-              onClick={() => setActiveTab('security')}
-            >
-              <ShieldCheck size={18} className="me-3" />
-              Security & Access
-            </button>
+          <div className="card">
+            <div className="card-body p-2">
+              <nav className="d-flex flex-column gap-1">
+                {navItems.map(({ key, icon: Icon, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className="btn d-flex align-items-center gap-2 text-start"
+                    style={{
+                      padding: '0.625rem 0.875rem',
+                      fontWeight: activeTab === key ? 700 : 500,
+                      fontSize: '0.875rem',
+                      background: activeTab === key ? 'rgba(189,0,26,0.07)' : 'transparent',
+                      color: activeTab === key ? 'var(--af-primary)' : 'var(--af-on-surface-variant)',
+                      borderRadius: 'var(--radius-md)',
+                      border: 'none',
+                    }}
+                  >
+                    <Icon size={16} />
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Content */}
         <div className="col-md-9">
-          <div className="card border-0 shadow-sm min-vh-50">
-            <div className="card-body p-4">
+          <div className="card">
+            <div className="card-body" style={{ padding: '1.5rem' }}>
 
-              {/* General Tab */}
               {activeTab === 'general' && (
                 <div>
-                  <h5 className="fw-bold mb-4">Organizational Profile</h5>
+                  <h5 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Organizational Profile</h5>
                   <div className="row g-3">
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label small fw-bold">Organization Name</label>
+                    <div className="col-md-6">
+                      <label className="form-label">Organization Name</label>
                       <input type="text" className="form-control" defaultValue="CodeZenith Technologies" />
                     </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label small fw-bold">Primary Domain</label>
+                    <div className="col-md-6">
+                      <label className="form-label">Primary Domain</label>
                       <input type="text" className="form-control" defaultValue="codezenith.com" />
                     </div>
-                    <div className="col-md-12 mb-3">
-                      <label className="form-label small fw-bold">Headquarters Address</label>
-                      <textarea className="form-control" rows={3}>123 Innovation Drive, Silicon Valley, CA 94043</textarea>
+                    <div className="col-12">
+                      <label className="form-label">Headquarters Address</label>
+                      <textarea className="form-control" rows={3} defaultValue="Hattisar, New Baneshwor, Kathmandu, Nepal" />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small fw-bold">Timezone</label>
+                      <label className="form-label">Timezone</label>
                       <select className="form-select">
+                        <option>NPT (Nepal Standard Time, UTC+5:45)</option>
                         <option>UTC (Coordinated Universal Time)</option>
-                        <option>PST (Pacific Standard Time)</option>
-                        <option>EST (Eastern Standard Time)</option>
+                        <option>IST (India Standard Time, UTC+5:30)</option>
                       </select>
                     </div>
                   </div>
-                  <div className="mt-4 pt-3 border-top">
+                  <div className="mt-4" style={{ paddingTop: '1rem', borderTop: '1px solid var(--af-surface-container)' }}>
                     <button className="btn btn-primary px-4">Save Profile</button>
                   </div>
                 </div>
               )}
 
-              {/* Departments Tab */}
               {activeTab === 'departments' && (
                 <div>
-                  <h5 className="fw-bold mb-4">Manage Departments</h5>
+                  <h5 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Manage Departments</h5>
                   <form onSubmit={handleAddDept} className="d-flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="New department name..."
-                      value={newDept.name}
-                      onChange={(e) => setNewDept({ name: e.target.value })}
-                    />
-                    <button type="submit" className="btn btn-primary d-flex align-items-center">
-                      <Plus size={18} className="me-1" /> Add
+                    <input type="text" className="form-control" placeholder="New department name…" value={newDept.name} onChange={(e) => setNewDept({ name: e.target.value })} />
+                    <button type="submit" className="btn btn-primary d-flex align-items-center gap-2 flex-shrink-0">
+                      <Plus size={15} /> Add
                     </button>
                   </form>
-
                   <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead>
                         <tr>
-                          <th>Department Name</th>
+                          <th style={{ paddingLeft: '1.25rem' }}>Department Name</th>
                           <th>Employees</th>
-                          <th className="text-end">Actions</th>
+                          <th className="text-end" style={{ paddingRight: '1.25rem' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {depts.map(d => (
+                        {depts.map((d) => (
                           <tr key={d.id}>
-                            <td className="fw-medium">{d.name}</td>
-                            <td>{d.employeeCount} Members</td>
-                            <td className="text-end">
-                              <button className="btn btn-link text-danger p-0" onClick={() => handleDeleteDept(d.id)}>
-                                <Trash2 size={16} />
+                            <td style={{ paddingLeft: '1.25rem', fontWeight: 600 }}>{d.name}</td>
+                            <td style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)' }}>{d.employeeCount} Members</td>
+                            <td className="text-end" style={{ paddingRight: '1.25rem' }}>
+                              <button className="btn btn-sm" style={{ background: 'rgba(189,0,26,0.08)', color: 'var(--af-primary)', border: 'none' }} onClick={() => handleDeleteDept(d.id)}>
+                                <Trash2 size={14} />
                               </button>
                             </td>
                           </tr>
@@ -218,34 +185,18 @@ export const SettingsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Holidays Tab */}
               {activeTab === 'holidays' && (
                 <div>
-                  <h5 className="fw-bold mb-4">Holiday Calendar 2026</h5>
+                  <h5 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Holiday Calendar 2026</h5>
                   <form onSubmit={handleAddHoliday} className="row g-2 mb-4">
                     <div className="col-md-5">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Holiday name"
-                        value={newHoliday.name}
-                        onChange={(e) => setNewHoliday({ ...newHoliday, name: e.target.value })}
-                      />
+                      <input type="text" className="form-control" placeholder="Holiday name" value={newHoliday.name} onChange={(e) => setNewHoliday({ ...newHoliday, name: e.target.value })} />
                     </div>
                     <div className="col-md-3">
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={newHoliday.date}
-                        onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })}
-                      />
+                      <input type="date" className="form-control" value={newHoliday.date} onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })} />
                     </div>
                     <div className="col-md-2">
-                      <select
-                        className="form-select"
-                        value={newHoliday.type}
-                        onChange={(e) => setNewHoliday({ ...newHoliday, type: e.target.value as any })}
-                      >
+                      <select className="form-select" value={newHoliday.type} onChange={(e) => setNewHoliday({ ...newHoliday, type: e.target.value as any })}>
                         <option value="public">Public</option>
                         <option value="optional">Optional</option>
                       </select>
@@ -254,28 +205,25 @@ export const SettingsPage: React.FC = () => {
                       <button type="submit" className="btn btn-primary w-100">Add</button>
                     </div>
                   </form>
-
                   <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead>
                         <tr>
-                          <th>Holiday</th>
+                          <th style={{ paddingLeft: '1.25rem' }}>Holiday</th>
                           <th>Date</th>
                           <th>Type</th>
-                          <th className="text-end">Actions</th>
+                          <th className="text-end" style={{ paddingRight: '1.25rem' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {holidays.map(h => (
+                        {holidays.map((h) => (
                           <tr key={h.id}>
-                            <td className="fw-medium">{h.name}</td>
-                            <td>{new Date(h.date).toLocaleDateString()}</td>
-                            <td>
-                              <Badge variant={h.type === 'public' ? 'danger' : 'success'}>{h.type}</Badge>
-                            </td>
-                            <td className="text-end">
-                              <button className="btn btn-link text-danger p-0" onClick={() => handleDeleteHoliday(h.id)}>
-                                <Trash2 size={16} />
+                            <td style={{ paddingLeft: '1.25rem', fontWeight: 600 }}>{h.name}</td>
+                            <td style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)' }}>{new Date(h.date).toLocaleDateString()}</td>
+                            <td><Badge variant={h.type === 'public' ? 'danger' : 'success'}>{h.type}</Badge></td>
+                            <td className="text-end" style={{ paddingRight: '1.25rem' }}>
+                              <button className="btn btn-sm" style={{ background: 'rgba(189,0,26,0.08)', color: 'var(--af-primary)', border: 'none' }} onClick={() => handleDeleteHoliday(h.id)}>
+                                <Trash2 size={14} />
                               </button>
                             </td>
                           </tr>
@@ -286,17 +234,21 @@ export const SettingsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Working Days Tab */}
               {activeTab === 'working' && (
                 <div>
-                  <h5 className="fw-bold mb-4">Standard Working Week</h5>
-                  <p className="text-muted small mb-4">Select the days that are considered working days for the organization.</p>
-
-                  <div className="list-group list-group-flush border rounded overflow-hidden">
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                      <div className="list-group-item d-flex justify-content-between align-items-center py-3" key={day}>
-                        <div className="fw-bold">{day}</div>
-                        <div className="form-check form-switch">
+                  <h5 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>Standard Working Week</h5>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--af-on-surface-variant)', marginBottom: '1.25rem' }}>
+                    Select days considered working days for the organization.
+                  </p>
+                  <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--af-surface-container)', overflow: 'hidden' }}>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, i, arr) => (
+                      <div
+                        key={day}
+                        className="d-flex justify-content-between align-items-center"
+                        style={{ padding: '0.875rem 1.25rem', borderBottom: i < arr.length - 1 ? '1px solid var(--af-surface-container)' : 'none' }}
+                      >
+                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{day}</span>
+                        <div className="form-check form-switch mb-0">
                           <input
                             className="form-check-input"
                             type="checkbox"
@@ -310,13 +262,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Security Tab */}
               {activeTab === 'security' && (
-                <div className="text-center py-5">
-                  <ShieldCheck size={48} className="text-primary opacity-25 mb-3" />
-                  <h5>Access Control</h5>
-                  <p className="text-muted small">Configure IP restrictions, password policies, and MFA settings.</p>
-                  <button className="btn btn-outline-primary mt-3 px-4">Initialize Security Audit</button>
+                <div className="empty-state">
+                  <ShieldCheck size={48} />
+                  <h6 style={{ fontWeight: 600, color: 'var(--af-on-surface)', marginBottom: '0.25rem' }}>Access Control</h6>
+                  <p style={{ fontSize: '0.875rem', margin: '0 0 1rem' }}>Configure IP restrictions, password policies, and MFA settings.</p>
+                  <button className="btn btn-outline-primary">Initialize Security Audit</button>
                 </div>
               )}
 
