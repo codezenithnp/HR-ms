@@ -1,0 +1,829 @@
+{
+  "info": {
+    "_postman_id": "hrms-api-tests-v1",
+    "name": "HRMS API Tests",
+    "description": "Automated API test suite for HR Management System.\n\nPrerequisites:\n- Backend running on http://localhost:5000\n- DB seeded: cd backend && npm run seed\n\nRun with Newman:\n  npm install -g newman\n  newman run HRMS_Collection.postman_collection.json --reporters cli,htmlextra",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{authToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "authToken", "value": "" },
+    { "key": "createdEmployeeDbId", "value": "" },
+    { "key": "attendanceId", "value": "" },
+    { "key": "leaveId", "value": "" },
+    { "key": "leaveTypeId", "value": "" },
+    { "key": "shiftId", "value": "" },
+    { "key": "departmentId", "value": "" },
+    { "key": "holidayId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Server is healthy - status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Auth",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Login successful - status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Token returned', () => pm.expect(json).to.have.property('token'));",
+            "pm.test('User role is admin', () => pm.expect(json.role).to.equal('admin'));",
+            "pm.collectionVariables.set('authToken', json.token);"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@codezenith.com\",\"password\":\"Admin@123\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login - Invalid Credentials",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Rejects bad credentials - status 401', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@codezenith.com\",\"password\":\"WrongPassword\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Get Me",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has email field', () => pm.expect(json).to.have.property('email'));",
+            "pm.test('Email matches admin', () => pm.expect(json.email).to.equal('admin@codezenith.com'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Update Me",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Name updated', () => pm.expect(json.name || json.data && json.data.name).to.exist);"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Admin User\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Update Password",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Password updated - status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"Admin@123\",\"newPassword\":\"Admin@123\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/password"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@codezenith.com\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/forgotpassword"
+          }
+        },
+        {
+          "name": "Get Me - No Token (should fail)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Rejects unauthenticated request - status 401', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Settings",
+      "item": [
+        {
+          "name": "Departments",
+          "item": [
+            {
+              "name": "Get All Departments",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/settings/departments" }
+            },
+            {
+              "name": "Create Department",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "const id = json._id || (json.data && json.data._id);",
+                "pm.test('Department ID returned', () => pm.expect(id).to.exist);",
+                "pm.collectionVariables.set('departmentId', id);"
+              ]}}],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Postman Test Dept\",\"description\":\"Created by automated tests\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/departments"
+              }
+            },
+            {
+              "name": "Update Department",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Postman Test Dept Updated\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/departments/{{departmentId}}"
+              }
+            },
+            {
+              "name": "Delete Department",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/settings/departments/{{departmentId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Shifts",
+          "item": [
+            {
+              "name": "Get All Shifts",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/settings/shifts" }
+            },
+            {
+              "name": "Create Shift",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "const id = json._id || (json.data && json.data._id);",
+                "pm.test('Shift ID returned', () => pm.expect(id).to.exist);",
+                "pm.collectionVariables.set('shiftId', id);"
+              ]}}],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Morning Shift\",\"startTime\":\"09:00\",\"endTime\":\"17:00\",\"workingDays\":[\"Monday\",\"Tuesday\",\"Wednesday\",\"Thursday\",\"Friday\"]}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/shifts"
+              }
+            },
+            {
+              "name": "Update Shift",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Morning Shift Updated\",\"startTime\":\"08:30\",\"endTime\":\"16:30\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/shifts/{{shiftId}}"
+              }
+            },
+            {
+              "name": "Delete Shift",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/settings/shifts/{{shiftId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Holidays",
+          "item": [
+            {
+              "name": "Get All Holidays",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/settings/holidays" }
+            },
+            {
+              "name": "Create Holiday",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "const id = json._id || (json.data && json.data._id);",
+                "pm.collectionVariables.set('holidayId', id);"
+              ]}}],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Public Holiday\",\"date\":\"2026-12-31\",\"description\":\"Year end holiday\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/holidays"
+              }
+            },
+            {
+              "name": "Update Holiday",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Public Holiday Updated\",\"date\":\"2026-12-31\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/holidays/{{holidayId}}"
+              }
+            },
+            {
+              "name": "Delete Holiday",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/settings/holidays/{{holidayId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "App Settings",
+          "item": [
+            {
+              "name": "Get Settings (company)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 or 404', () => {",
+                "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                "});"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/settings/company" }
+            },
+            {
+              "name": "Update Settings (company)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"value\":{\"name\":\"CodeZenith HR\",\"address\":\"Kathmandu, Nepal\"}}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/settings/company"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Employees",
+      "item": [
+        {
+          "name": "Get All Employees",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Returns employee list', () => {",
+            "  const list = Array.isArray(json) ? json : (json.data || json.employees || []);",
+            "  pm.expect(list).to.be.an('array');",
+            "});"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/employees" }
+        },
+        {
+          "name": "Create Employee",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "const id = json._id || (json.data && json.data._id) || (json.employee && json.employee._id);",
+            "pm.test('Employee created with ID', () => pm.expect(id).to.exist);",
+            "pm.collectionVariables.set('createdEmployeeDbId', id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"employeeId\":\"TEST-001\",\"fullName\":\"Test Employee\",\"email\":\"test.employee@codezenith.com\",\"phone\":\"9800000000\",\"department\":\"Engineering\",\"position\":\"Junior Engineer\",\"role\":\"employee\",\"joinDate\":\"2026-01-01\",\"address\":\"Kathmandu\",\"dob\":\"2000-01-01\",\"status\":\"active\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/employees"
+          }
+        },
+        {
+          "name": "Get Employee by ID",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Correct employee returned', () => {",
+            "  const emp = json.data || json;",
+            "  pm.expect(emp).to.have.property('fullName');",
+            "});"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/employees/{{createdEmployeeDbId}}"
+          }
+        },
+        {
+          "name": "Get Employee by String ID (TEST-001)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/employees/TEST-001"
+          }
+        },
+        {
+          "name": "Update Employee",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"position\":\"Senior Engineer\",\"status\":\"active\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/employees/{{createdEmployeeDbId}}"
+          }
+        },
+        {
+          "name": "Get My Profile (Admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/employees/profile/me" }
+        },
+        {
+          "name": "Update My Profile (Admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\":\"9800000001\",\"address\":\"Kathmandu, Nepal\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/employees/profile/me"
+          }
+        },
+        {
+          "name": "Get All Employees (filtered by dept)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?department=Engineering&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"],
+              "query": [
+                { "key": "department", "value": "Engineering" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Employee",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/employees/{{createdEmployeeDbId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Attendance",
+      "item": [
+        {
+          "name": "Login as Employee (for attendance tests)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Employee login successful - status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('authToken', json.token);"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"krish.dhakal@codezenith.com\",\"password\":\"Employee@123\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Check In",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Check-in successful - status 200 or 201', () => {",
+            "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+            "});",
+            "const json = pm.response.json();",
+            "const id = json._id || (json.data && json.data._id) || (json.attendance && json.attendance._id);",
+            "if (id) pm.collectionVariables.set('attendanceId', id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/attendance/check-in"
+          }
+        },
+        {
+          "name": "Get My Attendance",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/attendance/me" }
+        },
+        {
+          "name": "Get Today Attendance",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/attendance/today" }
+        },
+        {
+          "name": "Check Out",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Check-out successful - status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/attendance/check-out"
+          }
+        },
+        {
+          "name": "Login as Admin (for admin attendance tests)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Admin login - status 200', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('authToken', pm.response.json().token);"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@codezenith.com\",\"password\":\"Admin@123\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Get All Attendance (Admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/attendance" }
+        },
+        {
+          "name": "Get Today Stats (Admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Stats has numeric fields', () => {",
+            "  const stats = json.data || json;",
+            "  pm.expect(stats).to.be.an('object');",
+            "});"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/attendance/today-stats" }
+        },
+        {
+          "name": "Update Attendance (Admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"notes\":\"Updated by admin test\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/attendance/{{attendanceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Leaves",
+      "item": [
+        {
+          "name": "Leave Types",
+          "item": [
+            {
+              "name": "Login as Admin (for leave type tests)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.collectionVariables.set('authToken', pm.response.json().token);"
+              ]}}],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\":\"admin@codezenith.com\",\"password\":\"Admin@123\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              }
+            },
+            {
+              "name": "Get All Leave Types",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Returns array', () => {",
+                "  const json = pm.response.json();",
+                "  const list = Array.isArray(json) ? json : (json.data || []);",
+                "  pm.expect(list).to.be.an('array');",
+                "});"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/leaves/types" }
+            },
+            {
+              "name": "Create Leave Type",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "const id = json._id || (json.data && json.data._id);",
+                "pm.test('Leave type ID returned', () => pm.expect(id).to.exist);",
+                "pm.collectionVariables.set('leaveTypeId', id);"
+              ]}}],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Leave\",\"daysAllowed\":3,\"carryForward\":false,\"description\":\"Test leave type\",\"color\":\"#FF5733\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/leaves/types"
+              }
+            },
+            {
+              "name": "Update Leave Type",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Test Leave Updated\",\"daysAllowed\":5}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/leaves/types/{{leaveTypeId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Leave Requests",
+          "item": [
+            {
+              "name": "Login as Employee (for leave requests)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.collectionVariables.set('authToken', pm.response.json().token);"
+              ]}}],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\":\"krish.dhakal@codezenith.com\",\"password\":\"Employee@123\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              }
+            },
+            {
+              "name": "Request Leave",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Leave request created - status 201', () => pm.response.to.have.status(201));",
+                "const json = pm.response.json();",
+                "const id = json._id || (json.data && json.data._id) || (json.leave && json.leave._id);",
+                "pm.test('Leave ID returned', () => pm.expect(id).to.exist);",
+                "pm.collectionVariables.set('leaveId', id);"
+              ]}}],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"leaveType\":\"{{leaveTypeId}}\",\"fromDate\":\"2026-06-10\",\"toDate\":\"2026-06-10\",\"days\":1,\"reason\":\"Personal work - automated test\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/leaves"
+              }
+            },
+            {
+              "name": "Get My Leaves",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/leaves/me" }
+            },
+            {
+              "name": "Get Leave Balance",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/leaves/balance/krish.dhakal@codezenith.com"
+              }
+            },
+            {
+              "name": "Login as Admin (for leave approval)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.collectionVariables.set('authToken', pm.response.json().token);"
+              ]}}],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\":\"admin@codezenith.com\",\"password\":\"Admin@123\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              }
+            },
+            {
+              "name": "Get All Leaves (Admin)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/leaves" }
+            },
+            {
+              "name": "Update Leave Status (Approve)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Status is approved', () => {",
+                "  const leave = json.data || json;",
+                "  pm.expect(leave.status).to.equal('approved');",
+                "});"
+              ]}}],
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"status\":\"approved\",\"remarks\":\"Approved via automated test\"}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/api/leaves/{{leaveId}}"
+              }
+            },
+            {
+              "name": "Delete Leave (Cancel - Admin)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/leaves/{{leaveId}}"
+              }
+            },
+            {
+              "name": "Delete Leave Type (Cleanup)",
+              "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));"
+              ]}}],
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/leaves/types/{{leaveTypeId}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
